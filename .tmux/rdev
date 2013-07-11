@@ -1,0 +1,6 @@
+selectp -t 1              # select pane 1
+splitw -h -p 50           # split pane 1 horizontally 50/50 
+neww                      # create new window
+neww                      # create new window
+selectp -t 1              # select pane 1
+splitw -h -p 50           # split pane 1 horizontally 50/50 

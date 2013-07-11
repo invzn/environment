@@ -1,6 +1,13 @@
+set shell=bash
 set background=dark
 syntax on
 set tabstop=2
 set shiftwidth=2
 set expandtab
+set backspace=indent,eol,start
+set number
+set noswapfile
 colorscheme jellybeans_modified
+so ~/.vim/Vimfile
+so ~/.vim/config/ctrlp.vim
+"so ~/.vim/config/ack.vim
