@@ -1,11 +1,16 @@
 ack 2.04
 autoconf 2.69
 freetds 0.91
-git 1.8.3.1 1.8.3.2
+git 1.8.3.1 1.8.3.2 1.8.3.4
+go 1.1.1
 libevent 2.0.21
 libpng 1.5.14
 libyaml 0.1.4
+mercurial 2.7
+mongodb 2.4.5-x86_64
 mysql 5.6.10 5.6.12
+ngrok 0.17
+phantomjs 1.9.1
 pkg-config 0.28
 qt 4.8.4
 rbenv 0.4.0

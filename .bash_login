@@ -21,19 +21,26 @@ BCYN="\[\033[46m\]" # background cyan
 BWHT="\[\033[47m\]" # background white
 
 # terminal prompt
-export PS1="$FCYN\u@$FGRN\h$FMAG(\W)$RS\n> "
+invader=$(echo -e "\xf0\x9f\x91\xbe")
+export PS1="$FCYN\u@$FGRN\h$FMAG(\W)$RS\n$invader  "
 
-# fix PATH for homebrew
+# add PATH for homebrew
 export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
 
-# Add RVM to PATH for scripting
-PATH=$PATH:$HOME/.rvm/bin
+# EDITOR variable for knife
+export EDITOR="vim"
 
-# Load RVM into a shell session *as a function*
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+# enable shims and autocompletion
+if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
 
 # ls color
 alias ls="ls -G"
 
 # elasticsearch
 alias elasticsearch="elasticsearch -f -D es.config=/usr/local/opt/elasticsearch/config/elasticsearch.yml"
+
+# git autocompletion for bash
+source ~/.bash/git_completion.sh
+
+# secret sauce
+source ~/.bash/secret.sh

@@ -1,0 +1,5 @@
+source ~/.bash_login
+export PS1="$FCYN\u@$FGRN\h$FMAG(\W)$FCYN[vim]$RS\n$invader  "
+function vim {
+  echo "There is a vim instance already!"
+}
