@@ -4,9 +4,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # bash configs
 cp $DIR/.bash_login ~/.bash_login
+cp -r $DIR/.bash ~/.
 
 # vim configs
 cp $DIR/.vimrc ~/.vimrc
+cp $DIR/.bash_vim ~/.bash_vim
 cp -r $DIR/.vim ~/.
 
 # tmux configs
