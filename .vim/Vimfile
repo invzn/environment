@@ -15,6 +15,7 @@ call vundle#rc()
 "Bundle 'tpope/vim-rails.git'
 Bundle 'mileszs/ack.vim.git'
 Bundle 'kien/ctrlp.vim.git'
+Bundle 'itchyny/lightline.vim'
 
 " vim-scripts repos
 "Bundle 'L9'
