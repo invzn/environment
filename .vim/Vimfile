@@ -14,8 +14,12 @@ call vundle#rc()
 "Bundle 'rstacruz/sparkup', {'rtp': 'vim/'}
 "Bundle 'tpope/vim-rails.git'
 Bundle 'mileszs/ack.vim.git'
+Bundle 'ggreer/the_silver_searcher.git'
 Bundle 'kien/ctrlp.vim.git'
 Bundle 'itchyny/lightline.vim'
+Bundle 'elixir-lang/vim-elixir.git'
+Bundle 'dhruvasagar/vim-table-mode.git'
+Bundle 'tomlion/vim-solidity.git'
 
 " vim-scripts repos
 "Bundle 'L9'
