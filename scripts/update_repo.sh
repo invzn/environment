@@ -4,7 +4,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
 DOTFILES_DIR="$DIR/dotfiles"
 
 # bash configs
-cp ~/.bashrc $DOTFILES_DIR/.bashrc
+if [ "$(uname -s)" == "Darwin" ]; then
+  cp ~/.bash_profile $DOTFILES_DIR/.bashrc
+fi
 
 # vim configs
 cp ~/.vimrc $DOTFILES_DIR/.vimrc
