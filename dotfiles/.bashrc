@@ -21,32 +21,14 @@ BCYN="\[\033[46m\]" # background cyan
 BWHT="\[\033[47m\]" # background white
 
 # terminal prompt
-invader=$(echo -e "\xf0\x9f\x91\xbe")
-#export PS1="$FCYN\u@$FGRN\h$FMAG(\W)$RS\n$invader "
 export PS1="$FCYN\u@$FGRN\h$FMAG(\W)$RS\n$FMAG>$RS "
 
-# add PATH for homebrew
-export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
+# Mute bash deprecation warning.
+export BASH_SILENCE_DEPRECATION_WARNING=1
 
-# EDITOR variable for knife
-export EDITOR="vim"
+# Set PATH, MANPATH, etc., for Homebrew.
+eval "$(/opt/homebrew/bin/brew shellenv)"
 
-# enable shims and autocompletion
-if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
+export XDG_CONFIG_HOME="$HOME/.config"
 
-# ls color
-alias ls="ls -G"
-
-# elasticsearch
-#alias elasticsearch="elasticsearch -f -D es.config=/usr/local/opt/elasticsearch/config/elasticsearch.yml"
-
-# git autocompletion for bash
-source ~/.bash/git_completion.sh
-
-# secret sauce
-source ~/.bash/secret.sh
-
-# boot2docker
-export DOCKER_HOST=tcp://192.168.59.103:2376
-export DOCKER_CERT_PATH=/Users/callenrosario/.boot2docker/certs/boot2docker-vm
-export DOCKER_TLS_VERIFY=1
+export NIX_CONF_DIR="$HOME/.config/nix"
