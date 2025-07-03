@@ -31,7 +31,7 @@ require("lazy").setup({
 	},
 	-- Configure any other settings here. See the documentation for more details.
 	-- colorscheme that will be used when installing plugins.
-	install = { colorscheme = { "catppuccin" } },
+	install = { colorscheme = { "catppuccin-macchiato" } },
 	-- automatically check for plugin updates
 	hecker = { enabled = true, notify = false },
 	-- disable luarocks
@@ -40,4 +40,4 @@ require("lazy").setup({
 
 -- Set colorscheme
 vim.opt.termguicolors = true
-vim.cmd.colorscheme("catppuccin")
+vim.cmd.colorscheme("catppuccin-macchiato")
