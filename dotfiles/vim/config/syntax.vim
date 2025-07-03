@@ -12,7 +12,7 @@ endfunction
 autocmd BufWritePre *.m,*.h,*.c,*.mm,*.cpp,*.hpp call StripTrailingWhitespace()
 
 " Ruby, Rails
-autocmd BufWritePre *.rb,*.yml,*.js,*.css,*.less,*.sass,*.scss,*.html,*.xml,*.erb,*.haml call StripTrailingWhitespace()
+"autocmd BufWritePre *.rb,*.yml,*.js,*.css,*.less,*.sass,*.scss,*.html,*.xml,*.erb,*.haml call StripTrailingWhitespace()
 
 " Java, PHP
 autocmd BufWritePre *.java,*.php,*.feature call StripTrailingWhitespace()
@@ -35,3 +35,6 @@ autocmd FileType scss set iskeyword+=@,48-57,?,!,192-255
 
 " Open all folds in Markdown.
 autocmd FileType mkd normal zR
+
+" Javascript
+autocmd FileType javascript setlocal shiftwidth=4 tabstop=4 softtabstop=0 expandtab
