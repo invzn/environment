@@ -1,49 +1,34 @@
 {
-  description = "vixen system flake";
-
+  description = "vixen flake";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-24.11-darwin";
-    nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.11";
-    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    # Where we get most of our software. Giant mono repo with recipes
+    # called derivations that say how to build software.
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable"; # 25.11
+
+    # Manages configs links things into your home directory
+    home-manager.url = "github:nix-community/home-manager/master";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Controls system level software and settings including fonts
+    darwin.url = "github:lnl7/nix-darwin";
+    darwin.inputs.nixpkgs.follows = "nixpkgs";
+
+    ## Tricked out nvim
+    #pwnvim.url = "github:zmre/pwnvim";
   };
-
-  outputs = inputs@{ self, nix-darwin, nixpkgs }:
-  let
-    configuration = { config, pkgs, ... }: {
-      # List packages installed in system profile. To search by name, run:
-      # $ nix-env -qaP | grep wget
-      environment.systemPackages = [
-      ];
-
-      # Necessary for using flakes on this system.
-      nix.settings.experimental-features = "nix-command flakes";
-
-      # Enable alternative shell support in nix-darwin.
-      # programs.fish.enable = true;
-
-      # Set Git commit hash for darwin-version.
-      system.configurationRevision = self.rev or self.dirtyRev or null;
-
-      # Used for backwards compatibility, please read the changelog before changing.
-      # $ darwin-rebuild changelog
-      system.stateVersion = 5;
-
-      # The platform the configuration will be used on.
-      nixpkgs.hostPlatform = "aarch64-darwin";
-
-      # Add trusted users
-      nix.settings.trusted-users = [
-        "crosario"
-      ]; 
-
-      users.users.crosario = import ./users/crosario.nix { inherit config; inherit pkgs; };
+  outputs = inputs@{ nixpkgs, home-manager, darwin, ... }: {
+    darwinConfigurations.vixen = darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
+      pkgs = import nixpkgs { system = "aarch64-darwin"; };
+      modules = [ ./darwin ];
     };
-  in
-  {
-    # Build darwin flake using:
-    # $ darwin-rebuild build --flake .#vixen
-    darwinConfigurations."vixen" = nix-darwin.lib.darwinSystem {
-      modules = [ configuration ];
+    homeConfigurations = {
+      "crosario" = home-manager.lib.homeManagerConfiguration {
+        # System is very important!
+        pkgs = import nixpkgs { system = "aarch64-darwin"; };
+
+        modules = [ ./home-manager ]; # Defined later
+      };
     };
   };
 }

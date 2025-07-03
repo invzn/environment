@@ -5,14 +5,31 @@ My development environment.
 
 # Setup
 
-## NIX
+## Dotfiles
 
-For vixen machine:
+---
+
+To install on a new system:
+
 ```
-nix run nix-darwin/nix-darwin-24.11#darwin-rebuild -- switch --flake ./nix-vixen
+./scripts/install.sh
 ```
 
-# Structure
+To update a system:
+
+```
+./scripts/update.sh
+```
+
+To update the repo with current dotfiles:
+
+```
+./scripts/update_repo.sh
+```
+
+# Repo Structure
+
+---
 
 ```
 github.com/invzn/environment
