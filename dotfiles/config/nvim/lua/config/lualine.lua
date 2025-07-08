@@ -1,12 +1,3 @@
-
--- color table:
---
--- | name           | 256 color | hex     |
--- |--------------------------------------|
--- | darkgrey       | colour236 | #303030 |
--- | white          | colour253 | #dadada |
--- | grey           | colour239 | #4e4e4e |
--- | lightslategray | colour103 | #8787af |
 local colors = {
   darkgray     = "#303030",
   gray         = "#4e4e4e",

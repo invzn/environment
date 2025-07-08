@@ -1,0 +1,162 @@
+# might set this to none in the future
+shell-integration = bash
+
+copy-on-select = clipboard
+
+macos-titlebar-style = hidden
+macos-non-native-fullscreen = true
+
+window-padding-x = 5,3
+window-padding-y = 6,1
+
+font-family = CodeNewRoman Nerd Font Mono
+font-size = "18"
+font-thicken = "true"
+font-thicken-strength = "50"
+
+alpha-blending = linear
+
+# Xterm system colors:
+# --------------------
+# 0	  Black
+# 1	  Maroon
+# 2	  Green
+# 3	  Olive
+# 4	  Navy
+# 5	  Purple
+# 6	  Teal
+# 7	  Silver
+# 8	  Grey
+# 9	  Red
+# 10	Lime
+# 11	Yellow
+# 12	Blue
+# 13	Fuchsia
+# 14	Aqua
+# 15	White
+
+
+# Catppuccin Palette
+# ------------------
+# Rosewater #f2d5cf
+# Flamingo  #eebebe
+# Pink      #f4b8e4
+# Mauve     #ca9ee6
+# Red       #e78284
+# Maroon    #ea999c
+# Peach     #ef9f76
+# Yellow    #e5c890
+# Green     #a6d189
+# Teal      #81c8be
+# Sky       #99d1db
+# Sapphire  #85c1dc
+# Blue      #8caaee
+# Lavender  #babbf1
+
+
+# Catppuccin Inspired
+# ------------------
+#palette = 0=#000000
+#palette = 1=#e78284
+#palette = 2=#a6d189
+#palette = 3=#ef9f76
+#palette = 4=#8caaee
+#palette = 5=#ca9ee6
+#palette = 6=#81c8be
+#palette = 7=#a5adce
+#palette = 8=#838ba7
+#palette = 9=#ea999c
+#palette = 10=#f2d5cf
+#palette = 11=#e5c890
+#palette = 12=#85c1dc
+#palette = 13=#babbf1
+#palette = 14=#99d1db
+#palette = 15=#c6d0f5
+
+#palette = 0=#000000
+#palette = 1=#ff8b8b
+#palette = 2=#96fb9d
+#palette = 3=#fffc67
+#palette = 4=#949dff
+#palette = 5=#ff99ff
+#palette = 6=#92e2ff
+#palette = 7=#c7c7c7
+#palette = 8=#686868
+#palette = 9=#ff8b8c
+#palette = 10=#98fba0
+#palette = 11=#fffc67
+#palette = 12=#949bff
+#palette = 13=#ff98ff
+#palette = 14=#91e2ff
+#palette = 15=#ffffff
+
+# dark_pastel (personal)
+# ----------------------
+palette = 0=#000000
+palette = 1=#f1908e
+palette = 2=#adf8a5
+palette = 3=#fefb7e
+palette = 4=#959cf8
+palette = 5=#f09df9
+palette = 6=#a4e0fb
+palette = 7=#c7c7c7
+palette = 8=#676767
+palette = 9=#f1918f
+palette = 10=#aff8a8
+palette = 11=#fefb7e
+palette = 12=#959bf8
+palette = 13=#f29df9
+palette = 14=#a3dffb
+palette = 15=#feffff
+background = #000000
+foreground = #feffff
+
+
+# Colors (Root Loops)
+# via https://rootloops.sh?sugar=8&colors=7&sogginess=6&flavor=2&fruit=8&milk=0
+# ===================
+#background = #020a11
+#foreground = #d0e6f7
+#
+## black
+#palette = 0=#0c2535
+#palette = 8=#275776
+#
+## red
+#palette = 1=#ec9384
+#palette = 9=#f2b2a6
+#
+## green
+#palette = 2=#6cc581
+#palette = 10=#80dc95
+#
+## yellow
+#palette = 3=#cbab4f
+#palette = 11=#e1c166
+#
+## blue
+#palette = 4=#96abed
+#palette = 12=#b2c3f2
+#
+## purple
+#palette = 5=#dd8ed6
+#palette = 13=#e7aee1
+#
+## aqua
+#palette = 6=#54c0d1
+#palette = 14=#70d5e7
+#
+## white
+#palette = 7=#89c0e8
+#palette = 15=#e7f3fb
+
+
+
+
+cursor-color = #c7c7c7
+cursor-text = #feffff
+selection-background = #c6dcfc
+selection-foreground = #000000
+
+cursor-style = "block"
+cursor-style-blink = "false"
