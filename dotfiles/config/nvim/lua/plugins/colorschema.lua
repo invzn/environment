@@ -22,6 +22,19 @@ return {
 			},
 			color_overrides = {
 				mocha = {
+					text = "#feffff",
+					base = "#000000",
+					mantle = "#000000",
+					crust = "#000000",
+				},
+				frappe = {
+					text = "#feffff",
+					base = "#000000",
+					mantle = "#000000",
+					crust = "#000000",
+				},
+				macchiato = {
+					text = "#feffff",
 					base = "#000000",
 					mantle = "#000000",
 					crust = "#000000",
