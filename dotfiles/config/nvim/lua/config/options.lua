@@ -32,6 +32,9 @@ opt.linebreak = false       -- Wrap on word boundary
 opt.termguicolors = true    -- Enable 24-bit RGB colors
 opt.laststatus=3            -- Set global statusline
 --opt.winborder='rounded'     -- Set the border style of floating windows
+-- Reserve a space in the gutter
+-- This will avoid an annoying layout shift in the screen
+opt.signcolumn = 'yes'
 
 -----------------------------------------------------------
 -- Tabs, indent
@@ -49,6 +52,7 @@ opt.history = 100           -- Remember N lines in history
 opt.lazyredraw = true       -- Faster scrolling
 opt.synmaxcol = 240         -- Max column for syntax highlight
 opt.updatetime = 250        -- ms to wait for trigger an event
+opt.maxmempattern = 5000
 
 -----------------------------------------------------------
 -- Startup

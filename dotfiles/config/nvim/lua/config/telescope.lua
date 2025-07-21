@@ -1,11 +1,14 @@
 local data = assert(vim.fn.stdpath "data") --[[@as string]]
 
 require("telescope").setup {
-  defaults = {},
+  defaults = {
+    file_ignore_patterns = { ".git/" } -- or { ".git/**" }
+  },
   pickers = {
     find_files = {
       theme = "dropdown",
       previewer = false,
+      hidden = true,
       layout_config = {
         width = 0.7,
         height = 0.7,
@@ -15,6 +18,7 @@ require("telescope").setup {
       theme = "dropdown",
       sort_lastused = true,
       previewer = false,
+      hidden = true,
       cwd_only = true,
       layout_config = {
         width = 0.7,
@@ -24,6 +28,7 @@ require("telescope").setup {
     live_grep = {
       theme = "dropdown",
       previewer = false,
+      hidden = true,
       layout_config = {
         width = 0.7,
         height = 0.7,
