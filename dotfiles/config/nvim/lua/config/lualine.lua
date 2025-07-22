@@ -10,7 +10,7 @@ local colors = {
 -- x,y,z sets the color scheme for left components
 local invzn = {
   normal = {
-    a = {bg = colors.lightpurple, fg = colors.darkgray, gui = "bold"},
+    a = {bg = colors.lightpurple, fg = colors.darkgray},
     b = {bg = colors.gray, fg = colors.white},
     c = {bg = colors.darkgray, fg = colors.white},
     x = {bg = colors.darkgray, fg = colors.white},
@@ -18,7 +18,7 @@ local invzn = {
     z = {bg = colors.lightpurple, fg = colors.darkgray},
   },
   insert = {
-    a = {bg = colors.lightpurple, fg = colors.darkgray, gui = "bold"},
+    a = {bg = colors.lightpurple, fg = colors.darkgray},
     b = {bg = colors.gray, fg = colors.white},
     c = {bg = colors.darkgray, fg = colors.white},
     x = {bg = colors.darkgray, fg = colors.white},
@@ -26,7 +26,7 @@ local invzn = {
     z = {bg = colors.lightpurple, fg = colors.darkgray},
   },
   visual = {
-    a = {bg = colors.lightpurple, fg = colors.darkgray, gui = "bold"},
+    a = {bg = colors.lightpurple, fg = colors.darkgray},
     b = {bg = colors.gray, fg = colors.white},
     c = {bg = colors.darkgray, fg = colors.white},
     x = {bg = colors.darkgray, fg = colors.white},
@@ -34,7 +34,7 @@ local invzn = {
     z = {bg = colors.lightpurple, fg = colors.darkgray},
   },
   replace = {
-    a = {bg = colors.lightpurple, fg = colors.darkgray, gui = "bold"},
+    a = {bg = colors.lightpurple, fg = colors.darkgray},
     b = {bg = colors.gray, fg = colors.white},
     c = {bg = colors.darkgray, fg = colors.white},
     x = {bg = colors.darkgray, fg = colors.white},
@@ -42,7 +42,7 @@ local invzn = {
     z = {bg = colors.lightpurple, fg = colors.darkgray},
   },
   command = {
-    a = {bg = colors.lightpurple, fg = colors.darkgray, gui = "bold"},
+    a = {bg = colors.lightpurple, fg = colors.darkgray},
     b = {bg = colors.gray, fg = colors.white},
     c = {bg = colors.darkgray, fg = colors.white},
     x = {bg = colors.darkgray, fg = colors.white},
@@ -50,7 +50,7 @@ local invzn = {
     z = {bg = colors.lightpurple, fg = colors.darkgray},
   },
   inactive = {
-    a = {bg = colors.lightpurple, fg = colors.darkgray, gui = "bold"},
+    a = {bg = colors.lightpurple, fg = colors.darkgray},
     b = {bg = colors.gray, fg = colors.white},
     c = {bg = colors.darkgray, fg = colors.white},
     x = {bg = colors.darkgray, fg = colors.white},

@@ -1,16 +1,3 @@
--- Reserve a space in the gutter
--- This will avoid an annoying layout shift in the screen
-vim.opt.signcolumn = 'yes'
-
--- Add cmp_nvim_lsp capabilities settings to lspconfig
--- This should be executed before you configure any language server
-local lspconfig_defaults = require('lspconfig').util.default_config
-lspconfig_defaults.capabilities = vim.tbl_deep_extend(
-  'force',
-  lspconfig_defaults.capabilities,
-  require('cmp_nvim_lsp').default_capabilities()
-)
-
 -- This is where you enable features that only work
 -- if there is a language server active in the file
 vim.api.nvim_create_autocmd('LspAttach', {
@@ -26,20 +13,27 @@ vim.api.nvim_create_autocmd('LspAttach', {
       })
     end
 
-    -- Mappings.
-    local map = function(mode, l, r, opts)
-      opts = opts or {}
-      opts.silent = true
-      opts.buffer = bufnr
-      vim.keymap.set(mode, l, r, opts)
-    end
+    vim.diagnostic.config({
+      virtual_text = { current_line = true },
+      underline = true,
+      update_in_insert = false,
+      severity_sort = true,
+      signs = {
+        text = {
+          [vim.diagnostic.severity.ERROR] = 'E', -- or ''
+          [vim.diagnostic.severity.WARN]  = 'W', -- or ''
+          [vim.diagnostic.severity.INFO]  = 'I', -- or ''
+          [vim.diagnostic.severity.HINT]  = 'H', -- or ''
+        },
+      },
+      float = {
+        source = "if_many",
+        border = "rounded",
+      },
+    })
 
-    map("n", "K", function()
-      vim.lsp.buf.hover({})
-    end)
-
-    local opts = {buffer = event.buf}
-    --vim.keymap.set('n', 'K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
+    local opts = { buffer = event.buf }
+    vim.keymap.set('n', 'K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
     vim.keymap.set('n', 'gd', '<cmd>lua vim.lsp.buf.definition()<cr>', opts)
     vim.keymap.set('n', 'gD', '<cmd>lua vim.lsp.buf.declaration()<cr>', opts)
     vim.keymap.set('n', 'gi', '<cmd>lua vim.lsp.buf.implementation()<cr>', opts)
@@ -47,20 +41,51 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', 'gr', '<cmd>lua vim.lsp.buf.references()<cr>', opts)
     vim.keymap.set('n', 'gs', '<cmd>lua vim.lsp.buf.signature_help()<cr>', opts)
     vim.keymap.set('n', '<F2>', '<cmd>lua vim.lsp.buf.rename()<cr>', opts)
-    vim.keymap.set({'n', 'x'}, '<F3>', '<cmd>lua vim.lsp.buf.format({async = true})<cr>', opts)
+    vim.keymap.set('n', 'gf', '<cmd>lua vim.lsp.buf.format({async = true})<cr>', opts)
     vim.keymap.set('n', '<F4>', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
+    vim.keymap.set('n', 'ge', '<cmd>lua vim.diagnostic.open_float()<cr>', opts)
   end,
 })
 
--- These are just examples. Replace them with the language
--- servers you have installed in your system
-local util = require('lspconfig.util')
-require('lspconfig').gopls.setup({})
-require('lspconfig').terraformls.setup({
-  cmd = { 'terraform-ls', 'serve' },
-  filetypes = { 'terraform', 'terraform-vars' },
-  root_dir = util.root_pattern('.terraform', '.git'),
+---
+-- LSP Format on save
+---
+local fmt_group = vim.api.nvim_create_augroup('autoformat_cmds', { clear = true })
+local function setup_autoformat(event)
+  local id = vim.tbl_get(event, 'data', 'client_id')
+  local client = id and vim.lsp.get_client_by_id(id)
+  if client == nil then
+    return
+  end
+
+  vim.api.nvim_clear_autocmds({ group = fmt_group, buffer = event.buf })
+
+  local buf_format = function(e)
+    vim.lsp.buf.format({
+      bufnr = e.buf,
+      async = false,
+      timeout_ms = 10000,
+    })
+  end
+
+  vim.api.nvim_create_autocmd('BufWritePre', {
+    buffer = event.buf,
+    group = fmt_group,
+    desc = 'Format current buffer',
+    callback = buf_format,
+  })
+end
+vim.api.nvim_create_autocmd('LspAttach', {
+  desc = 'Setup format on save',
+  callback = setup_autoformat,
 })
+
+vim.lsp.enable('ccls')
+vim.lsp.enable('elixirls')
+vim.lsp.enable('gopls')
+vim.lsp.enable('luals')
+vim.lsp.enable('tsls')
+vim.lsp.enable('zls')
 
 ---
 -- Autocompletion config
@@ -69,13 +94,13 @@ local cmp = require('cmp')
 
 cmp.setup({
   sources = {
-    {name = 'nvim_lsp'},
+    { name = 'nvim_lsp' },
   },
   mapping = cmp.mapping.preset.insert({
     -- `Enter` key to confirm completion
-    ['<CR>'] = cmp.mapping.confirm({select = false}),
+    ['<CR>'] = cmp.mapping.confirm({ select = false }),
 
-    -- Ctrl+Space to trigger completion menu
+    -- Ctrl+Space to trigger conpletion menu
     ['<C-Space>'] = cmp.mapping.complete(),
 
     -- Scroll up and down in the completion documentation

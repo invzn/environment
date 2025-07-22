@@ -37,7 +37,3 @@ require("lazy").setup({
 	-- disable luarocks
 	rocks = { enabled = false },
 })
-
--- Set colorscheme
-vim.opt.termguicolors = true
-vim.cmd.colorscheme("catppuccin-macchiato")
