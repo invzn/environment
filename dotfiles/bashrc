@@ -30,5 +30,16 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
 
 export NIX_CONF_DIR="$HOME/.config/nix"
+
+export EDITOR="nvim"
+
+# git autocompletion for bash
+source $HOME/.bash/git_completion.sh
+
+export tmx="sesh connect \$(sesh list | fzf)"
+
+export _ZO_DATA_DIR="$XDG_DATA_HOME"
+eval "$(zoxide init bash)"
