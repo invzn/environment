@@ -26,9 +26,6 @@ export PS1="$FCYN\u@$FGRN\h$FMAG(\W)$RS\n$FMAG>$RS "
 # Mute bash deprecation warning.
 export BASH_SILENCE_DEPRECATION_WARNING=1
 
-# Set PATH, MANPATH, etc., for Homebrew.
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 
@@ -39,7 +36,10 @@ export EDITOR="nvim"
 # git autocompletion for bash
 source $HOME/.bash/git_completion.sh
 
-export tmx="sesh connect \$(sesh list | fzf)"
+alias tmx="sesh connect \$(sesh list | fzf)"
+
+# Set PATH, MANPATH, etc., for Homebrew.
+eval "$(/opt/homebrew/bin/brew shellenv)"
 
 export _ZO_DATA_DIR="$XDG_DATA_HOME"
 eval "$(zoxide init bash)"
