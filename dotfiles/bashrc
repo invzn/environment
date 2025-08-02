@@ -41,5 +41,8 @@ alias tmx="sesh connect \$(sesh list | fzf)"
 # Set PATH, MANPATH, etc., for Homebrew.
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
+# Set PATH for golang
+export PATH="$PATH:$(go env GOPATH)/bin"
+
 export _ZO_DATA_DIR="$XDG_DATA_HOME"
 eval "$(zoxide init bash)"
