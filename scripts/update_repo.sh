@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 repo_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
 repo_dotfiles_dir="$repo_dir/dotfiles"
@@ -26,7 +27,7 @@ update_bash () {
   fi
   if [ -d "$1/$bash_dir" ] && \
     [ -n "$(ls -A "$1/$bash_dir" 2>/dev/null)" ]; then
-    cp -r "$1/$bash_dir"/* "$repo_bash_dir/"
+    cp -r "$1/$bash_dir"/. "$repo_bash_dir/"
   fi
 }
 
@@ -47,11 +48,11 @@ update_vim () {
     cp "$1/$vim_dir/Vimfile" "$repo_vim_dir/"
     if [ -d "$1/$vim_dir/colors" ] && \
       [ -n "$(ls -A "$1/$vim_dir/colors" 2>/dev/null)" ]; then
-      cp -r "$1/$vim_dir/colors"/* "$repo_vim_dir/colors/"
+      cp -r "$1/$vim_dir/colors"/. "$repo_vim_dir/colors/"
     fi
     if [ -d "$1/$vim_dir/config" ] && \
       [ -n "$(ls -A "$1/$vim_dir/config" 2>/dev/null)" ]; then
-      cp -r "$1/$vim_dir/config"/* "$repo_vim_dir/config/"
+      cp -r "$1/$vim_dir/config"/. "$repo_vim_dir/config/"
     fi
   fi 
 }
@@ -60,14 +61,14 @@ update_vim () {
 update_nvim () {
   if [ -d "$1/$nvim_dir" ] && \
     [ -n "$(ls -A "$1/$nvim_dir" 2>/dev/null)" ]; then
-    cp -r "$1/$nvim_dir"/* "$repo_nvim_dir/"
+    cp -r "$1/$nvim_dir"/. "$repo_nvim_dir/"
   fi
 }
 
 # ghostty
 update_ghostty () {
   if [ -d "$1/$ghostty_dir" ] && [ -n "$(ls -A "$1/$ghostty_dir" 2>/dev/null)" ]; then
-    cp -r "$1/$ghostty_dir"/* "$repo_ghostty_dir/"
+    cp -r "$1/$ghostty_dir"/. "$repo_ghostty_dir/"
   fi
 }
 
@@ -76,7 +77,7 @@ update_aerospace () {
   if [ "$(uname -s)" == "Darwin" ] && \
     [ -d "$1/$aerospace_dir" ] && \
     [ -n "$(ls -A "$1/$aerospace_dir" 2>/dev/null)" ]; then
-    cp -r "$1/$aerospace_dir"/* "$repo_aerospace_dir/"
+    cp -r "$1/$aerospace_dir"/. "$repo_aerospace_dir/"
   fi
 }
 
@@ -99,7 +100,7 @@ update_pi () {
     if [ -d "$1/$pi_dir/extensions" ] && \
       [ -n "$(ls -A "$1/$pi_dir/extensions" 2>/dev/null)" ]; then
       mkdir -p "$repo_pi_dir/extensions"
-      cp -rL "$1/$pi_dir/extensions"/* "$repo_pi_dir/extensions/"
+      cp -rL "$1/$pi_dir/extensions"/. "$repo_pi_dir/extensions/"
     fi
 
     # prompts

@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 repo_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
 repo_dotfiles_dir="$repo_dir/dotfiles"
@@ -48,7 +49,7 @@ install_bash () {
     cp "$repo_dotfiles_dir/bashrc" "$1/.bashrc"
   fi
   reset_dir "$1/$bash_dir"
-  cp -r "$repo_bash_dir"/* "$1/$bash_dir/"
+  cp -r "$repo_bash_dir"/. "$1/$bash_dir/"
 }
 
 install_tmux () {
@@ -58,21 +59,21 @@ install_tmux () {
 install_vim () {
   cp "$repo_dotfiles_dir/vimrc" "$1/.vimrc"
   reset_dir "$1/$vim_dir"
-  cp -r "$repo_vim_dir"/* "$1/$vim_dir/"
+  cp -r "$repo_vim_dir"/. "$1/$vim_dir/"
 }
 
 install_nvim () {
   setup_xdg_config "$1"
 
   reset_dir "$1/$nvim_dir"
-  cp -r "$repo_nvim_dir"/* "$1/$nvim_dir/"
+  cp -r "$repo_nvim_dir"/. "$1/$nvim_dir/"
 }
 
 install_ghostty () {
   setup_xdg_config "$1"
 
   reset_dir "$1/$ghostty_dir"
-  cp -r "$repo_ghostty_dir"/* "$1/$ghostty_dir/"
+  cp -r "$repo_ghostty_dir"/. "$1/$ghostty_dir/"
 }
 
 install_aerospace () {
@@ -80,7 +81,7 @@ install_aerospace () {
     setup_xdg_config "$1"
 
     reset_dir "$1/$aerospace_dir"
-    cp -r "$repo_aerospace_dir"/* "$1/$aerospace_dir/"
+    cp -r "$repo_aerospace_dir"/. "$1/$aerospace_dir/"
   fi
 }
 
@@ -92,19 +93,19 @@ install_pi () {
   # agents
   if [ -d "$repo_pi_dir/agents" ]; then
     reset_dir "$1/$pi_dir/agents"
-    cp -r "$repo_pi_dir/agents"/* "$1/$pi_dir/agents/"
+    cp -r "$repo_pi_dir/agents"/. "$1/$pi_dir/agents/"
   fi
 
   # extensions
   if [ -d "$repo_pi_dir/extensions" ]; then
     reset_dir "$1/$pi_dir/extensions"
-    cp -r "$repo_pi_dir/extensions"/* "$1/$pi_dir/extensions/"
+    cp -r "$repo_pi_dir/extensions"/. "$1/$pi_dir/extensions/"
   fi
 
   # prompts
   if [ -d "$repo_pi_dir/prompts" ]; then
     reset_dir "$1/$pi_dir/prompts"
-    cp -r "$repo_pi_dir/prompts"/* "$1/$pi_dir/prompts/"
+    cp -r "$repo_pi_dir/prompts"/. "$1/$pi_dir/prompts/"
   fi
 
   # settings (don't overwrite auth.json)
