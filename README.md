@@ -20,6 +20,7 @@ To install a specific configuration(s):
 ./script/install.sh --nvim      # install neovim configurations
 ./script/install.sh --ghostty   # install ghostty configurations
 ./script/install.sh --aerospace # install aerospace configurations
+./script/install.sh --pi        # install pi coding agent configurations
 ```
 
 # Update Repo with Local Configuration
@@ -39,6 +40,7 @@ To update repo with a specific local configuration(s):
 ./script/update_repo.sh --nvim      # update repo with local neovim configurations
 ./script/update_repo.sh --ghostty   # update repo with local ghostty configurations
 ./script/update_repo.sh --aerospace # update repo with local aerospace configurations
+./script/update_repo.sh --pi        # update repo with local pi coding agent configurations
 ```
 
 # Structure
@@ -50,6 +52,7 @@ github.com/invzn/environment
 ├── dotfiles       // dotfiles
 ├── iterm2         // iterm2 config
 ├── nixflakes      // nix flakes
+├── pi-mono       // pi coding agent workspace
 └── scripts
     ├── install.sh      // install dotfiles
     ├── update.sh       // update dotfiles
