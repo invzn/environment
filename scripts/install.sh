@@ -7,6 +7,7 @@ repo_vim_dir="$repo_dotfiles_dir/vim"
 repo_nvim_dir="$repo_dotfiles_dir/config/nvim"
 repo_ghostty_dir="$repo_dotfiles_dir/config/ghostty"
 repo_aerospace_dir="$repo_dotfiles_dir/config/aerospace"
+repo_pi_dir="$repo_dotfiles_dir/pi"
 
 xdg_config_dir=".config"
 bash_dir=".bash"
@@ -14,61 +15,101 @@ vim_dir=".vim"
 nvim_dir="$xdg_config_dir/nvim"
 ghostty_dir="$xdg_config_dir/ghostty"
 aerospace_dir="$xdg_config_dir/aerospace"
+pi_dir=".pi/agent"
 
 reset_dir () {
+  # Validate the target is a subdirectory of the install dir
+  case "$1" in
+    "$install_dir"/*)
+      ;;
+    *)
+      echo "Error: reset_dir refusing to operate on '$1' (not under install dir '$install_dir')" >&2
+      return 1
+      ;;
+  esac
+
   if [ ! -d "$1" ]; then
-    mkdir $1
-  elif [ -n "$(ls -A $1 2>/dev/null)" ]; then
-    rm -rf $1/*
+    mkdir -p "$1"
+  elif [ -n "$(ls -A "$1" 2>/dev/null)" ]; then
+    rm -rf "$1"/*
   fi
 }
 
 setup_xdg_config () {
   if [ ! -d "$1/$xdg_config_dir" ]; then
-    mkdir $1/$xdg_config_dir 
+    mkdir -p "$1/$xdg_config_dir"
   fi
 }
 
 install_bash () {
   if [ "$(uname -s)" == "Darwin" ]; then
-    cp $repo_dotfiles_dir/bashrc $1/.bash_profile
+    cp "$repo_dotfiles_dir/bashrc" "$1/.bash_profile"
   else
-    cp $repo_dotfiles_dir/bashrc $1/.bashrc
+    cp "$repo_dotfiles_dir/bashrc" "$1/.bashrc"
   fi
   reset_dir "$1/$bash_dir"
-  cp -r $repo_bash_dir/* $1/$bash_dir/.
+  cp -r "$repo_bash_dir"/* "$1/$bash_dir/"
 }
 
 install_tmux () {
-  cp $repo_dotfiles_dir/tmux.conf $1/.tmux.conf
+  cp "$repo_dotfiles_dir/tmux.conf" "$1/.tmux.conf"
 }
 
 install_vim () {
-  cp $repo_dotfiles_dir/vimrc ~/.vimrc
+  cp "$repo_dotfiles_dir/vimrc" "$1/.vimrc"
   reset_dir "$1/$vim_dir"
-  cp -r $repo_vim_dir/* $1/$vim_dir/.
+  cp -r "$repo_vim_dir"/* "$1/$vim_dir/"
 }
 
 install_nvim () {
-  setup_xdg_config $1
+  setup_xdg_config "$1"
 
   reset_dir "$1/$nvim_dir"
-  cp -r $repo_nvim_dir/* $1/$nvim_dir/.
+  cp -r "$repo_nvim_dir"/* "$1/$nvim_dir/"
 }
 
 install_ghostty () {
-  setup_xdg_config $1
+  setup_xdg_config "$1"
 
   reset_dir "$1/$ghostty_dir"
-  cp -r $repo_ghostty_dir/* $1/$ghostty_dir/.
+  cp -r "$repo_ghostty_dir"/* "$1/$ghostty_dir/"
 }
 
 install_aerospace () {
   if [ "$(uname -s)" == "Darwin" ]; then
-    setup_xdg_config $1
+    setup_xdg_config "$1"
 
     reset_dir "$1/$aerospace_dir"
-    cp -r $repo_aerospace_dir/* $1/$aerospace_dir/.
+    cp -r "$repo_aerospace_dir"/* "$1/$aerospace_dir/"
+  fi
+}
+
+install_pi () {
+  if [ ! -d "$1/$pi_dir" ]; then
+    mkdir -p "$1/$pi_dir"
+  fi
+
+  # agents
+  if [ -d "$repo_pi_dir/agents" ]; then
+    reset_dir "$1/$pi_dir/agents"
+    cp -r "$repo_pi_dir/agents"/* "$1/$pi_dir/agents/"
+  fi
+
+  # extensions
+  if [ -d "$repo_pi_dir/extensions" ]; then
+    reset_dir "$1/$pi_dir/extensions"
+    cp -r "$repo_pi_dir/extensions"/* "$1/$pi_dir/extensions/"
+  fi
+
+  # prompts
+  if [ -d "$repo_pi_dir/prompts" ]; then
+    reset_dir "$1/$pi_dir/prompts"
+    cp -r "$repo_pi_dir/prompts"/* "$1/$pi_dir/prompts/"
+  fi
+
+  # settings (don't overwrite auth.json)
+  if [ -f "$repo_pi_dir/settings.json" ]; then
+    cp "$repo_pi_dir/settings.json" "$1/$pi_dir/settings.json"
   fi
 }
 
@@ -79,6 +120,7 @@ vim_flag="false"
 nvim_flag="false"
 ghostty_flag="false"
 aerospace_flag="false"
+pi_flag="false"
 
 while test $# -gt 0; do
   case "$1" in
@@ -96,6 +138,7 @@ while test $# -gt 0; do
       echo "--nvim                    install neovim configurations"
       echo "--ghostty                 install ghostty configurations"
       echo "--aerospace               install aerospace configurations"
+      echo "--pi                      install pi coding agent configurations"
       echo "--install-dir=DIR         specify a directory to install to"
       echo "                          (typically your home directory)"
       exit 0
@@ -107,6 +150,7 @@ while test $# -gt 0; do
       nvim_flag="true"
       ghostty_flag="true"
       aerospace_flag="true"
+      pi_flag="true"
       shift
       ;;
     --bash)
@@ -129,6 +173,10 @@ while test $# -gt 0; do
       aerospace_flag="true"
       shift
       ;;
+    --pi)
+      pi_flag="true"
+      shift
+      ;;
     --install-dir*)
       install_dir=`echo $1 | sed -e 's/^[^=]*=//g'`
       shift
@@ -144,35 +192,41 @@ echo "Installing configurations in $install_dir"
 # bash
 if [ "$bash_flag" == "true" ]; then
   echo "Installing bash configurations..."
-  install_bash $install_dir
+  install_bash "$install_dir"
 fi
 
 # tmux
 if [ "$tmux_flag" == "true" ]; then
   echo "Installing tmux configurations..."
-  install_tmux $install_dir
+  install_tmux "$install_dir"
 fi
 
 # vim
 #if [ "$vim_flag" == "true" ]; then
 #  echo "Installing vim configurations..."
-#  install_vim $install_dir
+#  install_vim "$install_dir"
 #fi
 
 # neovim
 if [ "$nvim_flag" == "true" ]; then
   echo "Installing neovim configurations..."
-  install_nvim $install_dir
+  install_nvim "$install_dir"
 fi
 
 # ghostty
 if [ "$ghostty_flag" == "true" ]; then
   echo "Installing ghostty configurations..."
-  install_ghostty $install_dir
+  install_ghostty "$install_dir"
 fi
 
 # aerospace
 if [ "$aerospace_flag" == "true" ]; then
   echo "Installing aerospace configurations..."
-  install_aerospace $install_dir
+  install_aerospace "$install_dir"
+fi
+
+# pi coding agent
+if [ "$pi_flag" == "true" ]; then
+  echo "Installing pi coding agent configurations..."
+  install_pi "$install_dir"
 fi
