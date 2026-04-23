@@ -21,7 +21,8 @@ This is a personal development environment configuration repo (dotfiles, scripts
 - `dotfiles/pi/` — Pi coding agent configuration
   - `agents/` — Sub-agent definitions (reviewer perspectives, scout, planner, worker)
   - `extensions/subagent/` — Sub-agent extension (index.ts, agents.ts)
-  - `prompts/` — Workflow prompt templates (review, pr-review, etc.)
+  - `prompts/` — Workflow prompt templates (review, pr-review, kb-*, etc.)
+  - `skills/llm-kb/` — LLM Knowledge Base skill for persistent knowledge bases
   - `settings.json` — Pi settings (no secrets)
 - `brew_list.txt` — Historical Homebrew package list (legacy, not actively maintained)
 
