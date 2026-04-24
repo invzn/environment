@@ -24,6 +24,9 @@ This is a personal development environment configuration repo (dotfiles, scripts
   - `prompts/` — Workflow prompt templates (review, pr-review, kb-*, etc.)
   - `skills/llm-kb/` — LLM Knowledge Base skill for persistent knowledge bases
   - `settings.json` — Pi settings (no secrets)
+- `dotfiles/mempalace/` — MemPalace configuration
+  - `config.json` — MemPalace config (palace directory location)
+  - `pi-to-transcript.py` — Converter script (pi JSONL sessions → transcripts)
 - `brew_list.txt` — Historical Homebrew package list (legacy, not actively maintained)
 
 ## Conventions
