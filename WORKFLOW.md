@@ -1,4 +1,17 @@
-# LLM Workflows
+# LLM Workflows (V1 — legacy)
+
+> **Legacy (V1). Kept for reference, not current guidance.** This describes an
+> earlier model that the active setup has since replaced in two ways:
+> 1. It splits test-writing and implementation across separate agents
+>    (`*-test-writer` + implementers) and writes all tests before any code.
+>    The current experts do **vertical-slice TDD** — the same agent writes one
+>    test, then its implementation, one behavior at a time. The
+>    all-tests-then-all-code split is now treated as an anti-pattern
+>    (see `dotfiles/claude/skills/tdd/SKILL.md`).
+> 2. The `*-test-writer` agents no longer exist.
+>
+> **Current workflows:** fast path → `dotfiles/claude/README.md`
+> (`implement` / `implement-auto`); heavy track → `WORKFLOW_V2.md` (`wf`).
 
 ## Pipeline
 
