@@ -1,10 +1,8 @@
 ---
-description: Full implementation workflow - scout gathers context, planner creates plan, worker implements
+description: Full implementation workflow (step mode) - tech lead pauses between discovery, planning, implementation, and review for approval
 ---
-Use the subagent tool with the chain parameter to execute this workflow:
+Use the subagent tool to delegate to the "tech-lead" agent with this task:
 
-1. First, use the "scout" agent to find all code relevant to: $@
-2. Then, use the "planner" agent to create an implementation plan for "$@" using the context from the previous step (use {previous} placeholder)
-3. Finally, use the "worker" agent to implement the plan from the previous step (use {previous} placeholder)
+Implement the following in **step** mode: $@
 
-Execute this as a chain, passing output between steps via {previous}.
+Pause after each phase (discovery, planning, implementation, review) and wait for my approval before proceeding.

@@ -9,6 +9,7 @@ repo_nvim_dir="$repo_dotfiles_dir/config/nvim"
 repo_ghostty_dir="$repo_dotfiles_dir/config/ghostty"
 repo_aerospace_dir="$repo_dotfiles_dir/config/aerospace"
 repo_pi_dir="$repo_dotfiles_dir/pi"
+repo_mempalace_dir="$repo_dotfiles_dir/mempalace"
 
 xdg_config_dir=".config"
 bash_dir=".bash"
@@ -112,10 +113,43 @@ update_pi () {
       done
     fi
 
+    # references
+    if [ -d "$1/$pi_dir/references" ] && \
+      [ -n "$(ls -A "$1/$pi_dir/references" 2>/dev/null)" ]; then
+      mkdir -p "$repo_pi_dir/references"
+      for f in "$1/$pi_dir/references"/*.md; do
+        [ -f "$f" ] && cp -L "$f" "$repo_pi_dir/references/"
+      done
+    fi
+
+    # AGENT.md
+    if [ -f "$1/$pi_dir/AGENT.md" ]; then
+      cp -L "$1/$pi_dir/AGENT.md" "$repo_pi_dir/AGENT.md"
+    fi
+
     # settings (never copy auth.json or sessions)
     if [ -f "$1/$pi_dir/settings.json" ]; then
       cp "$1/$pi_dir/settings.json" "$repo_pi_dir/settings.json"
     fi
+  fi
+}
+
+# mempalace
+update_mempalace () {
+  if [ -d "$1/.mempalace" ]; then
+    mkdir -p "$repo_mempalace_dir"
+
+    # Config
+    if [ -f "$1/.mempalace/config.json" ]; then
+      cp "$1/.mempalace/config.json" "$repo_mempalace_dir/config.json"
+    fi
+
+    # Converter script
+    if [ -f "$1/.mempalace/pi-to-transcript.py" ]; then
+      cp "$1/.mempalace/pi-to-transcript.py" "$repo_mempalace_dir/pi-to-transcript.py"
+    fi
+
+    # Never copy palace data, pi-sessions, or locks
   fi
 }
 
@@ -127,6 +161,7 @@ nvim_flag="false"
 ghostty_flag="false"
 aerospace_flag="false"
 pi_flag="false"
+mempalace_flag="false"
 
 while test $# -gt 0; do
   case "$1" in
@@ -145,6 +180,7 @@ while test $# -gt 0; do
       echo "--ghostty                 update ghostty configurations"
       echo "--aerospace               update aerospace configurations"
       echo "--pi                      update pi coding agent configurations"
+      echo "--mempalace               update mempalace configurations"
       echo "--install-dir=DIR         specify a directory to pull configurations from"
       echo "                          (typically your home directory)"
       exit 0
@@ -157,6 +193,7 @@ while test $# -gt 0; do
       ghostty_flag="true"
       aerospace_flag="true"
       pi_flag="true"
+      mempalace_flag="true"
       shift
       ;;
     --bash)
@@ -181,6 +218,10 @@ while test $# -gt 0; do
       ;;
     --pi)
       pi_flag="true"
+      shift
+      ;;
+    --mempalace)
+      mempalace_flag="true"
       shift
       ;;
     --install-dir*)
@@ -235,4 +276,10 @@ fi
 if [ "$pi_flag" == "true" ]; then
   echo "Copying pi coding agent configurations..."
   update_pi "$install_dir"
+fi
+
+# mempalace
+if [ "$mempalace_flag" == "true" ]; then
+  echo "Copying mempalace configurations..."
+  update_mempalace "$install_dir"
 fi
