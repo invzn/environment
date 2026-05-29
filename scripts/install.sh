@@ -117,6 +117,12 @@ install_pi () {
     cp -r "$repo_pi_dir/references"/. "$1/$pi_dir/references/"
   fi
 
+  # skills
+  if [ -d "$repo_pi_dir/skills" ]; then
+    reset_dir "$1/$pi_dir/skills"
+    cp -r "$repo_pi_dir/skills"/. "$1/$pi_dir/skills/"
+  fi
+
   # AGENT.md
   if [ -f "$repo_pi_dir/AGENT.md" ]; then
     cp "$repo_pi_dir/AGENT.md" "$1/$pi_dir/AGENT.md"

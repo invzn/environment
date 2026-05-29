@@ -124,6 +124,13 @@ update_pi () {
       done
     fi
 
+    # skills
+    if [ -d "$1/$pi_dir/skills" ] && \
+      [ -n "$(ls -A "$1/$pi_dir/skills" 2>/dev/null)" ]; then
+      mkdir -p "$repo_pi_dir/skills"
+      cp -rL "$1/$pi_dir/skills"/. "$repo_pi_dir/skills/"
+    fi
+
     # AGENT.md
     if [ -f "$1/$pi_dir/AGENT.md" ]; then
       cp -L "$1/$pi_dir/AGENT.md" "$repo_pi_dir/AGENT.md"
