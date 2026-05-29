@@ -9,6 +9,7 @@ repo_nvim_dir="$repo_dotfiles_dir/config/nvim"
 repo_ghostty_dir="$repo_dotfiles_dir/config/ghostty"
 repo_aerospace_dir="$repo_dotfiles_dir/config/aerospace"
 repo_pi_dir="$repo_dotfiles_dir/pi"
+repo_claude_dir="$repo_dotfiles_dir/claude"
 repo_mempalace_dir="$repo_dotfiles_dir/mempalace"
 
 xdg_config_dir=".config"
@@ -18,6 +19,7 @@ nvim_dir="$xdg_config_dir/nvim"
 ghostty_dir="$xdg_config_dir/ghostty"
 aerospace_dir="$xdg_config_dir/aerospace"
 pi_dir=".pi/agent"
+claude_dir=".claude"
 
 reset_dir () {
   # Validate the target is a subdirectory of the install dir
@@ -126,6 +128,41 @@ install_pi () {
   fi
 }
 
+install_claude () {
+  if [ ! -d "$1/$claude_dir" ]; then
+    mkdir -p "$1/$claude_dir"
+  fi
+
+  # agents
+  if [ -d "$repo_claude_dir/agents" ]; then
+    reset_dir "$1/$claude_dir/agents"
+    cp -r "$repo_claude_dir/agents"/. "$1/$claude_dir/agents/"
+  fi
+
+  # commands
+  if [ -d "$repo_claude_dir/commands" ]; then
+    reset_dir "$1/$claude_dir/commands"
+    cp -r "$repo_claude_dir/commands"/. "$1/$claude_dir/commands/"
+  fi
+
+  # references
+  if [ -d "$repo_claude_dir/references" ]; then
+    reset_dir "$1/$claude_dir/references"
+    cp -r "$repo_claude_dir/references"/. "$1/$claude_dir/references/"
+  fi
+
+  # skills
+  if [ -d "$repo_claude_dir/skills" ]; then
+    reset_dir "$1/$claude_dir/skills"
+    cp -r "$repo_claude_dir/skills"/. "$1/$claude_dir/skills/"
+  fi
+
+  # CLAUDE.md
+  if [ -f "$repo_claude_dir/CLAUDE.md" ]; then
+    cp "$repo_claude_dir/CLAUDE.md" "$1/$claude_dir/CLAUDE.md"
+  fi
+}
+
 install_mempalace () {
   if [ ! -d "$1/.mempalace" ]; then
     mkdir -p "$1/.mempalace"
@@ -154,6 +191,7 @@ nvim_flag="false"
 ghostty_flag="false"
 aerospace_flag="false"
 pi_flag="false"
+claude_flag="false"
 mempalace_flag="false"
 
 while test $# -gt 0; do
@@ -173,6 +211,7 @@ while test $# -gt 0; do
       echo "--ghostty                 install ghostty configurations"
       echo "--aerospace               install aerospace configurations"
       echo "--pi                      install pi coding agent configurations"
+      echo "--claude                  install claude code configurations"
       echo "--mempalace               install mempalace configurations"
       echo "--install-dir=DIR         specify a directory to install to"
       echo "                          (typically your home directory)"
@@ -186,6 +225,7 @@ while test $# -gt 0; do
       ghostty_flag="true"
       aerospace_flag="true"
       pi_flag="true"
+      claude_flag="true"
       mempalace_flag="true"
       shift
       ;;
@@ -211,6 +251,10 @@ while test $# -gt 0; do
       ;;
     --pi)
       pi_flag="true"
+      shift
+      ;;
+    --claude)
+      claude_flag="true"
       shift
       ;;
     --mempalace)
@@ -269,6 +313,12 @@ fi
 if [ "$pi_flag" == "true" ]; then
   echo "Installing pi coding agent configurations..."
   install_pi "$install_dir"
+fi
+
+# claude code
+if [ "$claude_flag" == "true" ]; then
+  echo "Installing claude code configurations..."
+  install_claude "$install_dir"
 fi
 
 # mempalace
