@@ -9,6 +9,39 @@ My development workflow using LLMs.
 
 ---
 
+## Lineage
+
+The macro-shape is **Staged Delivery** (McConnell, *Rapid Development*): do
+concept → requirements → architecture **once, up front**, then construct and
+deliver in successive usable increments. Stages 1–4 are that up-front phase
+(split into three altitudes — behavior, interface, tech); the per-module MRs
+are the delivery stages.
+
+Two deliberate grafts make it not pure Staged Delivery:
+
+- **Risk-first sequencing (Boehm's spiral):** MR #0 proves the costliest-to-
+  change decision — that the interfaces compose — before any module is
+  deepened. Tackle the highest-risk element first, cheaply.
+- **Tracer-bullet skeleton (Hunt & Thomas):** MR #0 *is* a walking skeleton —
+  all interfaces stubbed, one passing end-to-end test.
+
+And one deliberate departure: **backtracking is allowed.** Staged Delivery
+assumes the architecture is frozen after the up-front phase; here any stage may
+revise an earlier doc section and re-run forward. That's the agile/iterative
+correction — the pipeline is a default order, not one-way gates.
+
+Two named *Rapid Development* best practices are load-bearing: **Lifecycle
+Model Selection** (the V1/V2 routing rule, applied per task) and **Designing
+for Change** (Ousterhout's deep modules — isolate volatility behind narrow
+interfaces). **Miniature Milestones** (each gate, each one-module MR) and
+**Inspections** (agent review + standards review + human gate) round it out.
+
+What does *not* transfer: McConnell's central result that **People** dominate
+development speed. There's no team here — the binding resource is human review
+attention, which is why MRs are sized "reviewable in one sitting."
+
+---
+
 ## Two tracks
 
 V2 is the **heavy track**: a full upfront design pipeline for work that needs it. It is the go-forward default for substantial work. The older `implement` / `implement-auto` commands remain as the **fast path** (V1) — they are not deprecated clutter, they are the escape hatch for small, well-scoped changes.
@@ -30,7 +63,7 @@ This subsumes the obvious cases — novel features and multi-module work almost 
 
 A single design doc grows one section per stage and is the **single source of truth**. It lives **in the target repo on the feature branch** (e.g. `docs/design/<feature>.md`), committed — so it is versioned, travels with the code, is itself reviewable, and survives across sessions.
 
-The pipeline is **not waterfall.** The stages are a default forward order, not one-way gates. Any stage may send you back to revise an earlier section; you then re-run forward from there. Iteration is expected, not an exception.
+Backtracking (see [Lineage](#lineage)) happens here: any stage may send you back to revise an earlier section, after which you re-run forward from there.
 
 ---
 
