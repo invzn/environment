@@ -11,8 +11,9 @@ Read the design doc for context (the module's interface + spec, and the behavior
 Do NOT modify code yourself — delegate to expert agents via the Task tool. Bash is read-only for you (`git diff`, `git log`, `git show`, `git status`).
 
 ## This task's place in the sequence
-- **If task 0 (the tracer skeleton):** implement all interfaces as stubs + the end-to-end test that proves the contracts compose. The design doc lands in this base branch.
-- **If a module task:** branch from MR #0's base. **Only proceed if MR #0 is merged and interfaces are locked.** Concrete tech (e.g. Redis vs in-memory) is chosen *here*, behind the interface — not in the doc.
+- **If V2-lite (the only module):** there is no Task 0 — branch from the feature branch holding the doc and implement the module directly. No interface-lock wait, because nothing else depends on it. Concrete tech is chosen *here*, behind the interface.
+- **If task 0 (the tracer skeleton, full V2):** implement all interfaces as stubs + the end-to-end test that proves the contracts compose. The design doc lands in this base branch.
+- **If a module task (full V2):** branch from MR #0's base. **Only proceed if MR #0 is merged and interfaces are locked.** Concrete tech (e.g. Redis vs in-memory) is chosen *here*, behind the interface — not in the doc.
 
 ## Steps
 1. **TDD loop** — Task → the appropriate language expert (`go-expert`, `python-expert`, or `language-expert`) to run RED→GREEN→refactor for this task's behaviors, one at a time. Pass it: the module's interface + spec from the doc, the behavior list, and the project's test conventions.

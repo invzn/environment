@@ -42,20 +42,31 @@ attention, which is why MRs are sized "reviewable in one sitting."
 
 ---
 
-## Two tracks
+## Tracks
 
-V2 is the **heavy track**: a full upfront design pipeline for work that needs it. It is the go-forward default for substantial work. The older `implement` / `implement-auto` commands remain as the **fast path** (V1) — they are not deprecated clutter, they are the escape hatch for small, well-scoped changes.
+V2 is the **heavy track**: a full upfront design pipeline for work that needs it. The older `implement` / `implement-auto` commands remain as the **fast path** (V1) — not deprecated clutter, but the escape hatch for small, well-scoped changes. Between them sits **V2-lite** (see below) for a single deep module. Depth decides which tier; the routing rule makes that call.
 
 ### Routing rule
 
-> **New or changed interface → V2. Behavior change behind an interface that already exists and stays fixed → V1.**
+> **Route on depth, not on whether an interface changed.** Work that introduces one or more **deep modules** (Ousterhout — narrow interface, substantial hidden implementation) goes to V2. Everything else — shallow changes, trivial interface tweaks, behavior behind a stable interface, mechanical refactors *regardless of size* — goes to V1.
 
-The trigger keys off the one thing V2's machinery exists to protect: interfaces. Every heavy stage (Abstract Solution, Design, Module, the critique gate, the tracer bullet) is there to get interfaces and decomposition right *before* investing in implementation behind them. If a task creates or changes no interface, none of that earns its keep.
+The trigger keys off the one thing V2's machinery exists to protect: **deep modules and their interfaces.** Every heavy stage (Abstract Solution, Design, Module, the critique gate, the tracer bullet) is there to get those interfaces and the decomposition right *before* investing in the implementation hidden behind them. A deep module is precisely the thing that (a) has an interface worth designing carefully and (b) hides enough complexity that the implementing agent benefits from the written design doc. Shallow work has neither — a trivial interface and no substantial hidden implementation — so the doc would have no consumer and none of the machinery earns its keep.
 
-This subsumes the obvious cases — novel features and multi-module work almost always require new interfaces, so they route to V2 naturally. It deliberately ignores size: a large rewrite *behind a stable interface* has no design risk and belongs on the fast path.
+"Deep module?" subsumes the old "interface changed?" proxy: a deep module always has an interface worth designing, while a changed interface with nothing substantial behind it (an added param, a rename) does not. Routing on depth also ignores size by construction — a large rewrite with no new depth is still V1.
 
-- **Who decides:** the main thread assesses "does this need a new/changed interface?" and recommends a track; I confirm or override.
-- **Escalation:** if a V1 task surfaces an interface change mid-flight, **stop and escalate to V2**, re-entering at the Design/Module stage for that interface.
+### Three tiers
+
+Depth decides not just *whether* to go heavy but *how* heavy. The MR #0 / parallel-lock machinery exists only to stop an interface change from rippling across *parallel* work — so it earns its keep only with more than one deep module.
+
+| Tier | When | What runs |
+|---|---|---|
+| **V1 (fast path)** | No deep module | `/implement`, `/implement-auto`, `/scout-and-plan` |
+| **V2-lite** | Exactly one deep module | Stages 1–4 + Implement. **Skip Planning's MR #0 / parallel-lock** — there is nothing to parallelize. |
+| **Full V2** | Multiple deep modules | All six stages. MR #0 locks interfaces before parallel deepening. |
+
+- **Who decides:** the main thread assesses "does this introduce a deep module, and how many?" and recommends a tier; I confirm or override. A *smell* of depth from the abstract-solution sketch is enough to route — the full decomposition (stage 4) is not a prerequisite.
+- **Escalation:** if a V1 task surfaces a deep module mid-flight, **stop and escalate**, re-entering at Design/Module. If a V2-lite task turns out to need a second deep module, escalate to full V2 (add MR #0).
+- **Status: provisional.** This routing rule has zero real runs behind it. Revisit after ~10 uses.
 
 ---
 
@@ -94,6 +105,8 @@ input: doc through requirements
 
 A conversation with the main thread to commit to **one mechanism family** that meets the requirements. Test of this stage: if you could swap the answer without touching the requirements, it belongs here.
 
+**Gate: optional.** The stage-3 design agent consumes stages 1–3 as a single artifact, so the pause *here* serves only me. Take it when the mechanism-family choice is contested; otherwise fold this conversation into Design and stop only at the stage-3 handoff gate.
+
 output: + **abstract solution**
 
 ### 3. Design Implementation
@@ -120,7 +133,9 @@ input: doc through module specs
 
 Create the list of subagent tasks. **1 deep module = 1 task = 1 MR.**
 
-Sequencing:
+**V2-lite skips the MR #0 sequencing below.** With a single deep module there is nothing to parallelize, so the tracer-bullet skeleton and interface-lock exist only to serve full V2 (multiple modules). A single-module plan is just that one task.
+
+Sequencing (full V2):
 - **MR #0 is the tracer-bullet skeleton:** all interfaces + stub implementations + a passing end-to-end test that proves the contracts compose. The doc and agreed interfaces land in this base branch; subsequent module MRs branch from it.
 - After MR #0 is merged and interfaces are locked, the remaining modules are deepened — **one MR each, parallelizable**, because they are interface-isolated.
 - **Do not parallelize before MR #0 is merged.** An interface change after parallel work has started ripples across every in-flight module.
@@ -146,6 +161,7 @@ output: a merge request
 
 ## Gates & feedback
 
+- **Human gates are for me, not the agent.** The design agent consumes the doc *through stage 3* as one artifact — stages 1 and 2 are folded into it. So the pause *boundaries* within 1–3 serve only my ability to catch a mistake early. **Stage 1 (requirements) and stage 3 (design — the agent handoff) are hard gates; the stage-2 gate is optional**, taken only when the mechanism-family choice is contested.
 - **Module-interface critique gate:** before Implement, run a critique pass on the design + interfaces (`design-review` / `architect-reviewer`, or a grill). The tracer-bullet skeleton then empirically confirms the contracts compose. Two cheap checks before deep investment — because interface mistakes are the costliest.
 - **Backtracking:** any stage may revise an earlier section of the doc in place; re-run forward from there.
 

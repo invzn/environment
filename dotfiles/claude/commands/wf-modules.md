@@ -29,6 +29,11 @@ A "behavior" is the TDD unit (one red→green cycle), so this is the same atom t
 2. Converse with me to define the deep modules: for each, the **narrow interface** (signatures, not implementation) and a **spec** (the contract, including the behavioral properties from Design and the behaviors to test). Apply the behavior-count split rule.
 3. Append a **## Modules** section: one subsection per module (interface + spec + rough behavior list). Backtracking is allowed — revise earlier sections in place if decomposition exposes a flaw, and note it.
 
+## Tier (fixed here)
+The module **count** now settles the track — record it in the doc so Planning and Implement follow it:
+- **One deep module → V2-lite:** Planning produces a single task with **no MR #0** (nothing to parallelize); Implement builds it directly off the feature branch.
+- **Multiple deep modules → full V2:** Planning leads with MR #0 to lock interfaces before parallel deepening.
+
 ## Critique gate (recommended before Stage 5)
 Interface mistakes are the costliest. Recommend I run a critique pass before planning:
 - `/design-review <feature>` (architect + DX), or
