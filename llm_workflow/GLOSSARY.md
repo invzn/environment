@@ -51,7 +51,3 @@ Source: Alistair Cockburn (term origin); popularised by Steve Freeman & Nat Pryc
 ### Task
 
 A unit of work that needs to be completed within a certain deadline.
-
-#### Task Types
-
-1. System Design
