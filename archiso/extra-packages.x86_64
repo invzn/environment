@@ -1,0 +1,8 @@
+# Extra packages added to the LIVE installer environment (not the target system —
+# the target gets its packages via pacstrap in install.sh). The official 'releng'
+# profile already ships most install tooling; these are listed to be explicit and
+# resilient to upstream changes. Duplicates are harmless.
+gptfdisk
+btrfs-progs
+cryptsetup
+arch-install-scripts
