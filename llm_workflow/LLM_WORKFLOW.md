@@ -29,9 +29,20 @@ person or one agent may play several.
 2. **Every merge request is human-readable — reviewable in one sitting.** This
    is a comprehension limit, not a line-count limit.
 
-These two rules drive almost every other decision below. In particular: the
-binding resource is *human review attention*, so the unit of delivery is sized
-to what a person can absorb at once.
+These two rules drive almost every other decision below. The binding resource
+is the **sole human's comprehension of agent output** — not their time or
+review effort, but their ability to *fully understand* what the agents
+produced, at their own pace. "Reviewable in one sitting" is a proxy for
+**comprehensible as one unit**. So the unit of delivery is sized to what a
+person can absorb at once, and "split the module," "batch the reviews," and
+"comprehension-not-line-count" below are all corollaries of this single
+constraint, not independent rules.
+
+Comprehension is purchased by **structure**, not prose: deep modules, narrow
+interfaces, and small sibling merge requests are what let the human understand
+the output. The design doc (below) is the implementing agent's spec; the human
+may consult it as reference, but it is not what makes the output comprehensible
+— the decomposition is.
 
 ---
 
@@ -68,9 +79,9 @@ through layered review before the expensive human pass. The first pair decides
 what the workflow *is*; the second pair keeps it honest.
 
 > The classic result that *people* dominate development speed does **not**
-> transfer cleanly here — there is no team. The binding resource is the
-> human's review attention, which is why increments are sized "reviewable in
-> one sitting."
+> transfer cleanly here — there is no team. The binding resource is the sole
+> human's comprehension of agent output (see Non-negotiables), which is why
+> increments are sized "reviewable in one sitting."
 
 ---
 
@@ -109,36 +120,70 @@ before TDD without pulling in the heavy machinery.
 ### Three tiers
 
 Depth decides not just *whether* to go heavy but *how* heavy. The
-skeleton-first / interface-lock machinery exists only to stop an interface
-change from rippling across *parallel* work — so it earns its keep only when
-there is more than one deep module to build in parallel.
+skeleton-first / interface-lock machinery exists to prevent **interface drift
+between independently-built modules** — to stop a shared interface from being
+committed by several modules *before* it has been validated. It is about
+interface-drift *correctness*, not throughput; parallelism is a permitted
+side-effect, not the goal. The trigger is therefore not raw module count but
+**whether multiple modules will commit to shared interfaces before those
+interfaces are validated**. In a strictly sequential build, a wrong interface
+is corrected for free by backtracking — nothing else is in flight — so the
+skeleton earns its keep only when interfaces are committed as a set ahead of
+validation, which parallel construction does by definition.
 
 | Tier | When | What runs |
 |---|---|---|
 | **Fast path** | No deep module | A lightweight implement cycle: TDD → agent review → merge request → human review. No up-front design pipeline. |
-| **Lite** | Exactly one deep module | The full design pipeline (stages 1–4) + Implement. **Skip the skeleton / interface-lock** — there is nothing to parallelize. |
-| **Full** | Multiple deep modules | All six stages. The skeleton increment locks interfaces before the modules are deepened in parallel. |
+| **Lite** | No shared interfaces are committed before validation — a single deep module, or several built strictly one-at-a-time | The full design pipeline (stages 1–4) + Implement. **Skip the skeleton / interface-lock** — a wrong interface is corrected for free by backtracking, since nothing else is in flight. |
+| **Full** | Multiple deep modules will commit to shared interfaces before those interfaces are validated (the usual case when they are built concurrently) | All six stages. The skeleton increment locks interfaces before the modules are deepened against them. |
 
-- **Who decides:** the lead agent assesses "does this introduce a deep module,
-  and how many?" and recommends a tier; the human confirms or overrides. This
-  runs on a *cheap, up-front depth smell* — a back-of-envelope judgement made
-  for every task before any stage — **not** the committed stage-2 abstract
-  solution (which only the heavy track produces, so keying on it would be
-  circular). The smell is deliberately allowed to be wrong: the initial route is
-  a provisional guess, and **escalation is the correction**, not a failure.
-- **Escalation is allowed mid-flight.** If a fast-path task surfaces a deep
-  module, stop and escalate, re-entering at Design/Module. If a Lite task turns
-  out to need a second deep module, escalate to Full (add the skeleton
-  increment).
+- **Two routing clocks.** The route is not one three-way decision made up
+  front; it is two decisions made at two different times, because they key on
+  things knowable at two different times.
+  - **Up front (cheap smell): Fast vs. heavy.** "Does this introduce *any* deep
+    module?" This is a genuine back-of-envelope call — you can usually smell
+    that something hides real complexity behind a narrow interface before
+    designing it. It runs on a *cheap depth smell*, **not** the committed
+    stage-2 abstract solution (which only the heavy track produces, so keying on
+    it would be circular).
+  - **At the exit of the Module stage (informed, near-free): Lite vs. Full.**
+    Whether multiple modules will commit to shared interfaces before validation
+    is only visible *after* decomposition. By stage 4 you are looking right at
+    the interface list, so the call is nearly free. Stages 1–4 are identical for
+    Lite and Full; the tier is just a flag set at stage 4's exit (skeleton or
+    not). The lead agent recommends; the human confirms or overrides.
+  - Because Lite-vs-Full is *deferred* rather than guessed, escalation is no
+    longer needed to absorb a wrong tier guess. **Escalation now covers only the
+    genuine surprise:** fast-path work that turns out to hide a deep module,
+    which stops and re-enters the heavy track at Design/Module.
+- **Escalation is allowed mid-flight.** Beyond the up-front fast→heavy case
+  above, a Lite task already in Implement may surface a second deep module that
+  shares interfaces with the first; when it does, stop and escalate to Full,
+  adding the skeleton increment before the shared interfaces are committed by
+  both.
 - **Reviewability on the fast path.** The fast path has no Module stage, so it
-  cannot use module-splitting to stay reviewable. Two cases: *mechanical* work
-  (renames, reformats, dependency bumps, large mechanical rewrites) stays
-  reviewable in one sitting by the **comprehension-not-line-count** rule — a
-  200-file rename is huge in lines but ~one unit of comprehension; *heavy-but-
-  shallow behavioral* work (substantial new logic behind a stable interface)
-  gets no such exemption and is kept reviewable by **splitting it into multiple
-  sequential merge requests**. "Split the module, never the MR" is a heavy-track
-  rule; the fast path splits the MR because it has no module to split.
+  cannot use module-splitting to stay reviewable. Two cases:
+  - *Mechanical* work (renames, reformats, dependency bumps, large mechanical
+    rewrites) stays reviewable in one sitting by the
+    **comprehension-not-line-count** rule — but the exemption is conditional:
+    **mechanical work counts as one unit of comprehension only when a machine,
+    not the human, guarantees it changed only what it should** (a type checker,
+    a green test suite, a deterministic AST refactor — not an agent free-handing
+    edits across 200 files). The human comprehends the intent and audits the
+    guarantee. With no such guarantee the human is back on the hook for every
+    site, the exemption is void, and the work must be split or independently
+    verified.
+  - *Heavy-but-shallow behavioral* work (substantial new logic behind a stable
+    interface) gets no such exemption and is kept reviewable by **splitting it
+    into multiple sequential merge requests**. The seam, mirroring the
+    heavy-track module rule: **split by behavior-cluster in dependency order** —
+    each MR is one comprehensible cluster of related behavior that depends only
+    on behaviors already merged (the same "one behavior at a time" unit the TDD
+    loop already privileges). And the same escape hatch as the module rule: if
+    the behavior won't cut cleanly — a behavior in MR-2 would depend on an
+    unmerged half of MR-1 — **don't fabricate a cut; take the larger MR and flag
+    it.** "Split the module, never the MR" is a heavy-track rule; the fast path
+    splits the MR because it has no module to split.
 - **Status: provisional.** This routing rule has zero real runs behind it.
   Revisit after ~10 uses.
 
@@ -149,10 +194,23 @@ there is more than one deep module to build in parallel.
 A single design doc is the **single source of truth**. It grows **one section
 per stage** and lives **in the target repository, on the feature branch**,
 committed — so it is versioned, travels with the code, is itself reviewable,
-and survives across sessions.
+and survives across sessions. Its **primary audience is the implementing agent**
+— it is a spec. The human may consult it as reference, but the human's
+comprehension is carried by the decomposition, not by this document.
 
 Backtracking happens here: any stage may revise an earlier section in place,
 after which you re-run forward from that point.
+
+**Under Full-tier parallel construction the doc is frozen and funneled.** Once
+the skeleton merges, the design doc is locked exactly like the interfaces it
+records: it is read-only on module branches, and every canonical edit goes
+through the **base/skeleton branch** — the same discipline, and the same
+"expensive exception" recovery, as an interface change. This keeps "single
+source of truth" literally true: there is exactly one writable copy at any time.
+A module that discovers a legitimate refinement records it cheaply as a
+**proposed doc delta** in its merge request (one sentence in the description);
+the lead agent folds accepted deltas into the base doc at merge time. The
+canonical doc only ever mutates via the base branch.
 
 ---
 
@@ -160,10 +218,21 @@ after which you re-run forward from that point.
 
 The middle stages (Design, Module, Implement) are genuinely distinct
 *altitudes* of the same problem. One rule keeps them from collapsing into each
-other:
+other — but it is a **default-placement heuristic, not a strict partition**:
 
-> **Behavioral decisions live in Design. Interfaces live in Module. Concrete
-> technology lives in Implement.**
+> **Decide each thing at the highest altitude where you have enough information
+> to decide it, and no higher.** Behavioral decisions tend to land in Design,
+> interfaces in Module, and concrete technology in Implement — because that is
+> the first altitude at which each can be responsibly committed.
+
+The altitudes are a spectrum, not three sealed rooms: an interface signature
+inevitably re-encodes — and sometimes sharpens — the behavioral choices made in
+Design (the choice of `Take(n) → remaining` vs. `Check → allowed` vs.
+`Reserve/Commit` is itself a behavioral commitment). Don't litigate which room a
+decision "belongs" to. When a Module-stage signature reveals that a Design-level
+behavioral statement was underspecified, that is simply a **backtrack to
+Design** — re-run forward. No new mechanism; it is the backtracking the workflow
+already allows.
 
 Worked example — *"add rate limiting"*:
 
@@ -199,10 +268,16 @@ optional orchestrator can run the whole chain, pausing at each gate.
   of this stage: if you could swap the answer without touching the
   requirements, the choice belongs here.
 - **Out:** + **abstract solution**.
-- **Gate: optional.** The Design stage consumes stages 1–3 as a single
-  artifact, so pausing here serves only the human. Take the pause when the
-  mechanism-family choice is contested; otherwise fold this conversation into
-  Design.
+- **Gate: optional, and agent-initiated.** The Design stage consumes stages
+  1–3 as a single artifact, so pausing here serves only the human. But the human
+  has not seen this choice yet, so they cannot be the one to "contest" it — the
+  **lead agent decides whether to surface the pause.** Default is to fold the
+  conversation into Design; the lead agent raises the gate only when it judges
+  the mechanism-family choice to be a genuine live fork — more than one credible
+  family with materially different consequences, or a choice expensive to reverse
+  once Design builds on it. When the choice is obvious or forced, no pause. The
+  test is the lead agent's, made on the human's behalf: *would the human want to
+  weigh this fork before I commit Design to one arm of it?*
 
 ### 3. Design Implementation
 
@@ -231,11 +306,15 @@ optional orchestrator can run the whole chain, pausing at each gate.
   wins** — accept the larger merge request and flag it as the rare exception,
   rather than fabricating a seam to hit a size target.
 - **Out:** + **list of module interfaces and specs**.
-- **Gate: critique.** Before any code, run a critique pass on the design and
-  interfaces (an architecture/design review, or an adversarial grilling). The
-  skeleton increment then *empirically* confirms the contracts compose. Two
-  cheap checks before deep investment — because interface mistakes are the
-  costliest to undo.
+- **Gate: critique.** This is the first of **three layered interface checks**,
+  each catching a failure class the others structurally cannot (see Planning and
+  Gates & feedback for the other two). The critique gate is the **analytical**
+  one: before any code, run a critique pass on the design and interfaces (an
+  architecture/design review, or an adversarial grilling) asking *are these the
+  right interfaces — deep, well-factored, hiding the right complexity?* It cannot
+  catch "they don't actually compose," because nothing is wired yet — that is
+  the skeleton's job. Interface mistakes are the costliest to undo, which is why
+  three checks guard them and none of the three is redundant.
 
 ### 5. Planning
 
@@ -246,7 +325,27 @@ optional orchestrator can run the whole chain, pausing at each gate.
   - The first increment is the **skeleton**: all interfaces + stub
     implementations + one passing end-to-end test proving the contracts
     compose. The design doc and agreed interfaces land in this base branch;
-    every subsequent module branches from it.
+    every subsequent module branches from it. Stubbing every interface at once
+    may look like the horizontal "all-interfaces-then-all-code" split that
+    stage 6 warns against — it is the opposite. The skeleton is a **vertical**
+    tracer: one thin path through *all* the stubs, not one *layer* built out
+    across all features. No module is implemented; the stubs exist only to prove
+    the path composes. The skeleton carries the **second and third interface
+    checks**. Its passing end-to-end test is the
+    **automated/empirical** check — it proves the contracts *mechanically*
+    compose (types line up, the path runs), which the analytical critique gate
+    cannot, but it says nothing about whether the decomposition is *right* (a bad
+    design composes fine). Its human review is the **interface-lock gate** — the
+    highest-leverage human review in the whole Full tier, because this MR *is*
+    the lock: every parallel module branches from it, and per the Non-negotiables
+    these locked interfaces are what make the eventual output comprehensible to
+    the human. **Do not rubber-stamp it.** It looks like trivial scaffolding
+    ("just stubs and one test"), but the review question is *"are these the right
+    interfaces to lock?"* — not *"does this scaffolding look fine?"* This is the
+    one review that deserves *more* human scrutiny, not less. Stubbing every
+    interface, wiring them, and writing an end-to-end test is real work; none of
+    the three checks is "cheap," and pretending otherwise is how the lock gets
+    rubber-stamped.
   - After the skeleton merges and interfaces are locked, the remaining modules
     are deepened — **one merge request each, parallelizable**, because they are
     interface-isolated.
@@ -257,8 +356,10 @@ optional orchestrator can run the whole chain, pausing at each gate.
     gate exist to make *rare*, not impossible. Recovery: pause the in-flight
     modules, revise the interface in the base/skeleton branch, re-merge the
     skeleton, and rebase the in-flight modules onto it.
-- **Lite tier:** skip the skeleton — with a single module there is nothing to
-  parallelize. The plan is just that one task.
+- **Lite tier:** skip the skeleton — no shared interface is committed before
+  validation, so there is nothing for the skeleton to lock. The plan is the
+  module(s) in sequence; a wrong interface is corrected for free by backtracking
+  because nothing else is in flight.
 - **Out:** + **list of tasks**.
 
 ### 6. Implement
@@ -273,11 +374,17 @@ optional orchestrator can run the whole chain, pausing at each gate.
   4. **Human review** — the final gate.
 - **Out:** a merge request.
 - Reviews of parallel module merge requests are **batched** — collected and
-  reviewed together so the human gate does not become a per-merge-request
-  bottleneck. Batching removes per-MR round-trip latency; it does **not** merge
-  them into one oversized review. Each merge request remains its own one-sitting
-  unit (interface-isolation is what makes this legitimate), and batching does
-  not expand how much a human can absorb well in a sitting.
+  presented to the human together. The point is **not** to reduce agent
+  round-trip latency (the agents are not the bottleneck); it is to **package
+  agent output into the shape a single human can fully absorb.** Full-tier
+  modules are interface-isolated siblings off one skeleton, so reviewing them as
+  a batch lets the human page the shared interfaces and design into working
+  memory *once* and amortize that context across the whole batch — cheaper *per
+  module* than reviewing them scattered across days. Batching does **not** merge
+  them into one oversized review: each merge request remains its own one-sitting
+  unit (interface-isolation is what makes this legitimate), and a batch has an
+  **optimal size** — past the human's session capacity, comprehension degrades
+  and the batch should be split. More is not better.
 
 ---
 
@@ -287,9 +394,17 @@ optional orchestrator can run the whole chain, pausing at each gate.
   the doc *through stage 3* as one artifact, so the pause boundaries within
   stages 1–3 serve only the human's ability to catch a mistake early.
   **Requirements (1) and Design (3) are hard gates; the Abstract-Solution (2)
-  gate is optional**, taken only when the mechanism-family choice is contested.
-- **The critique gate** (between Module and Planning) plus the **skeleton
-  increment** are two cheap checks on the interfaces before deep investment.
+  gate is optional and agent-initiated** — the lead agent surfaces it on the
+  human's behalf only when the mechanism-family choice is a genuine live fork
+  (see stage 2), since the human has not yet seen the choice to contest it.
+- **Three layered interface checks** guard the interfaces before deep
+  investment, each catching what the others structurally cannot: the **critique
+  gate** (between Module and Planning) is *analytical* — is this the right
+  design?; the **skeleton's end-to-end test** is *automated* — do the contracts
+  mechanically compose?; the **skeleton MR's human review** is the
+  *interface-lock gate* — the deepest-scrutiny human review in Full tier, where
+  the interfaces are locked and the human's own comprehension scaffold is set.
+  None is redundant and none is "cheap."
 - **Backtracking:** any stage may revise an earlier section of the doc in
   place; re-run forward from there. Backtracking across an interface already
   locked by a merged skeleton is permitted but costly — see the soft-lock
