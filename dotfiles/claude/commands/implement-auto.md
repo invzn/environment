@@ -10,6 +10,8 @@ Bash is for read-only commands only here: `git diff`, `git log`, `git show`, `gi
 
 Use the Task tool with `subagent_type: "<agent-name>"` to delegate. Run independent agents in parallel by issuing multiple Task calls in a single response.
 
+This is the **fast path** of the LLM development workflow — for work with **no deep module** (canonical spec: `~/.claude/references/llm-workflow/LLM_WORKFLOW.md`). If discovery reveals the task hides a deep module, **stop and escalate** to the heavy track (`/wf`).
+
 Task: $ARGUMENTS
 
 ## Phase 1: Discovery
@@ -24,6 +26,7 @@ Per the TDD skill's Planning checklist:
 3. Design interfaces for **testability** — see `~/.claude/skills/tdd/interface-design.md`.
 4. **List the behaviors to test, prioritized — NOT a function-by-function implementation plan.**
 5. Identify the **tracer bullet**: the first behavior to drive end-to-end.
+6. **Reviewability:** the fast path has no module to split. *Mechanical* work stays one unit only when a machine (type checker, green suite, deterministic refactor) guarantees it changed only what it should; otherwise, and for *heavy-but-shallow behavioral* work, **split into sequential MRs by behavior-cluster in dependency order** — or take the larger MR and flag it if it won't cut cleanly.
 
 ## Phase 3: TDD Loop
 Delegate to the appropriate language expert (`go-expert`, `python-expert`, or `language-expert`) to run the full RED→GREEN→refactor cycle for the planned behaviors.

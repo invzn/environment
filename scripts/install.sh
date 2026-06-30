@@ -157,6 +157,15 @@ install_claude () {
     cp -r "$repo_claude_dir/references"/. "$1/$claude_dir/references/"
   fi
 
+  # llm workflow spec (canonical home is repo's llm_workflow/; deployed to a
+  # stable runtime path the global /wf-* commands read at runtime). Runs after
+  # the references reset above so it survives. update_repo.sh only pulls
+  # top-level *.md from references/, so this subdir is not mirrored back.
+  if [ -d "$repo_dir/llm_workflow" ]; then
+    reset_dir "$1/$claude_dir/references/llm-workflow"
+    cp -r "$repo_dir/llm_workflow"/. "$1/$claude_dir/references/llm-workflow/"
+  fi
+
   # skills
   if [ -d "$repo_claude_dir/skills" ]; then
     reset_dir "$1/$claude_dir/skills"

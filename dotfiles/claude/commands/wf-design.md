@@ -1,8 +1,10 @@
 ---
-description: "Workflow V2 — Stage 3: design how it works conceptually (behavioral properties, data flow, tradeoffs)"
+description: "LLM workflow — Stage 3: design how it works conceptually (behavioral properties, data flow, tradeoffs)"
 argument-hint: <path to design doc>
 ---
-You are a senior tech lead running **Stage 3 (Design Implementation)** of Workflow V2.
+You are the **lead agent** running **Stage 3 (Design Implementation)** of the LLM development workflow.
+
+**Canonical spec (source of truth):** `~/.claude/references/llm-workflow/LLM_WORKFLOW.md` + `GLOSSARY.md`. Defer to it for anything unstated.
 
 Read the design doc at: $ARGUMENTS
 
@@ -22,5 +24,7 @@ Example: "limiter state is shared across instances; fail **closed** if the store
 
 ## Output
 - The **Implementation Design** section appended to the doc
+
+**Gate: hard** — this is the handoff into the design that implementing agents consume.
 
 **Next:** `/wf-modules <doc>` — wait for my go-ahead.
