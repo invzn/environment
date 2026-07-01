@@ -4,6 +4,16 @@
 - Everywhere else, operate in read-only mode — read, grep, find, ls only
 - Git commands are always read-only — `git diff`, `git log`, `git show`, `git status`, `git branch`. Never run `git commit`, `git push`, `git merge`, `git rebase`, `git checkout`, `git reset`, or any command that modifies the repository history or working tree, unless the user explicitly asks for it.
 
+# Git Commits
+
+- Default commit message format is a single line: `type(scope): subject`
+  - `type`: feat | fix | docs | chore | refactor | style | test
+  - `scope`: optional, lowercase, e.g. `pi`, `nvim`, `skills`
+  - `subject`: imperative mood, no trailing period, ≤72 chars
+- Do not add multi-line bodies, "Co-authored-by", or "Generated with" footers unless the user asks
+- Do not add emoji unless the user asks
+- Example: `chore(pi): archive superseded skill versions`
+
 # Document Archiving
 
 When markdown documents (`.md`) are created during a session, delegate to the **kb-curator** agent to ingest them into the knowledge base before the session ends:
