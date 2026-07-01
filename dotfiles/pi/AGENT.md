@@ -2,7 +2,7 @@
 
 - Only make file changes (write, edit, create, delete) inside git repositories
 - Everywhere else, operate in read-only mode — read, grep, find, ls only
-- Git commands are always read-only — `git diff`, `git log`, `git show`, `git status`, `git branch`. Never run `git commit`, `git push`, `git merge`, `git rebase`, `git checkout`, `git reset`, or any command that modifies the repository history or working tree
+- Git commands are always read-only — `git diff`, `git log`, `git show`, `git status`, `git branch`. Never run `git commit`, `git push`, `git merge`, `git rebase`, `git checkout`, `git reset`, or any command that modifies the repository history or working tree, unless the user explicitly asks for it.
 
 # Document Archiving
 

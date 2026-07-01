@@ -10,10 +10,12 @@ Bash is for read-only commands only here: `git diff`, `git log`, `git show`, `gi
 
 Use the Task tool with `subagent_type: "<agent-name>"` to delegate. Run independent agents in parallel by issuing multiple Task calls in a single response.
 
+This is the **fast path** of the LLM development workflow — for work with **no deep module** (canonical spec: `~/.claude/references/llm-workflow/LLM_WORKFLOW.md`). If discovery reveals the task actually hides a deep module, **stop and escalate** to the heavy track (`/wf` at Design/Module) rather than pushing it through here.
+
 Task: $ARGUMENTS
 
 ## Phase 1: Discovery
-1. Read and understand the requirements above.
+1. Read and understand the requirements above. **If the requirement is ambiguous** (not whether it is deep — ambiguity, not depth, is the trigger), pause for a one-line requirements confirmation before any TDD.
 2. Task → `repo-expert` to identify relevant repos, files, and existing public interfaces.
 3. If multiple repos are involved, invoke `repo-expert` once per repo (in parallel).
 
@@ -33,6 +35,9 @@ Per the TDD skill's Planning checklist:
 3. Design interfaces for **testability** — see `~/.claude/skills/tdd/interface-design.md`.
 4. **List the behaviors to test, prioritized — NOT a function-by-function implementation plan.** You can't test everything; pick what matters.
 5. Identify the **tracer bullet**: the first behavior to drive end-to-end.
+6. **Keep the work reviewable in one sitting.** The fast path has no module to split, so:
+   - *Mechanical work* (renames, reformats, dependency bumps, large mechanical rewrites) counts as one unit of comprehension **only when a machine — not the human — guarantees it changed only what it should** (type checker, green suite, deterministic AST refactor). With no such guarantee the exemption is void: split it or verify independently.
+   - *Heavy-but-shallow behavioral work* (substantial new logic behind a stable interface) gets no exemption — **split it into multiple sequential MRs by behavior-cluster in dependency order**, each one comprehensible cluster depending only on already-merged behavior. If it won't cut cleanly, **don't fabricate a cut — take the larger MR and flag it.**
 
 **Present:**
 ## Plan

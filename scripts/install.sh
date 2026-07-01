@@ -117,6 +117,12 @@ install_pi () {
     cp -r "$repo_pi_dir/references"/. "$1/$pi_dir/references/"
   fi
 
+  # skills
+  if [ -d "$repo_pi_dir/skills" ]; then
+    reset_dir "$1/$pi_dir/skills"
+    cp -r "$repo_pi_dir/skills"/. "$1/$pi_dir/skills/"
+  fi
+
   # AGENT.md
   if [ -f "$repo_pi_dir/AGENT.md" ]; then
     cp "$repo_pi_dir/AGENT.md" "$1/$pi_dir/AGENT.md"
@@ -149,6 +155,15 @@ install_claude () {
   if [ -d "$repo_claude_dir/references" ]; then
     reset_dir "$1/$claude_dir/references"
     cp -r "$repo_claude_dir/references"/. "$1/$claude_dir/references/"
+  fi
+
+  # llm workflow spec (canonical home is repo's llm_workflow/; deployed to a
+  # stable runtime path the global /wf-* commands read at runtime). Runs after
+  # the references reset above so it survives. update_repo.sh only pulls
+  # top-level *.md from references/, so this subdir is not mirrored back.
+  if [ -d "$repo_dir/llm_workflow" ]; then
+    reset_dir "$1/$claude_dir/references/llm-workflow"
+    cp -r "$repo_dir/llm_workflow"/. "$1/$claude_dir/references/llm-workflow/"
   fi
 
   # skills

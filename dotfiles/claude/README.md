@@ -10,8 +10,8 @@ The setup is built around four cross-cutting ideas: **vertical-slice TDD**, **mu
 |---|---|
 | `CLAUDE.md` | Global instructions applied to every project (safety + interaction style) |
 | `agents/` | 12 subagent definitions (experts, reviewers, recon) |
-| `commands/` | 21 slash commands across four families |
-| `skills/` | 6 skills (TDD, grilling, architecture, KB) |
+| `commands/` | 19 slash commands across four families |
+| `skills/` | 5 skills (TDD, grilling, architecture, KB) |
 | `references/` | Style guides agents read at runtime |
 | `TODO.md` | Drafts/open questions; **not** loaded into context, **not** installed |
 
@@ -50,7 +50,7 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 - `implement` — full TDD workflow, **step mode** (pauses for approval between phases)
 - `implement-auto` — same workflow, **auto mode** (runs end to end)
 
-**Workflow V2 — the heavy track** (design-first; see [`WORKFLOW_V2.md`](../../WORKFLOW_V2.md))
+**Workflow V2 — the heavy track** (design-first; see [`LLM_WORKFLOW.md`](../../llm_workflow/LLM_WORKFLOW.md))
 - `wf` — orchestrator; routes V1 vs V2, then runs all six stages with gates
 - `wf-requirements` → `wf-solution` → `wf-design` → `wf-modules` → `wf-plan` → `wf-implement` — the six stages, each appending to a per-feature design doc
 
@@ -77,11 +77,13 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 
 ## How it composes
 
-**Fast path (V1)** — for changes behind an existing, stable interface:
+Routing is on **depth**, not whether an interface changed: work that introduces one or more **deep modules** (narrow interface, substantial hidden implementation) goes heavy; everything else stays on the fast path. (Provisional rule — see `LLM_WORKFLOW.md`.)
+
+**Fast path (V1)** — no deep module (shallow changes, trivial interface tweaks, behavior behind a stable interface, mechanical refactors regardless of size):
 `scout-and-plan` (plan) → `implement` / `implement-auto`. The orchestrating thread delegates the TDD loop to the matching language expert, then fans out to reviewers, then applies fixes.
 
-**Heavy track (V2)** — for work that creates or changes an interface:
-`wf` walks requirements → solution → design → modules → plan → implement, accreting a design doc on the feature branch. A critique gate (`design-review` / `grill-me`) hits the module interfaces before implementation; an MR #0 tracer skeleton proves the contracts compose; then one deep module per MR. Full rationale in `WORKFLOW_V2.md`.
+**Heavy track (V2)** — work that introduces deep modules:
+`wf` walks requirements → solution → design → modules → plan → implement, accreting a design doc on the feature branch. A critique gate (`design-review` / `grill-me`) hits the module interfaces before implementation; an MR #0 tracer skeleton proves the contracts compose; then one deep module per MR. A **single** deep module takes **V2-lite** — stages 1–4 + implement, no MR #0. Full rationale in `LLM_WORKFLOW.md`.
 
 **Review flows** — `review` / `pr-review` / `design-review` / `security-review` are thin orchestrators that fan work out to the reviewer agents in parallel and synthesize their findings.
 
@@ -92,7 +94,7 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 Findings from reviewing the setup — gaps, drift, and rough edges worth addressing:
 
 1. **`AGENTS.md` (repo root) is stale.** It still documents the *pi* coding agent under `dotfiles/pi/`, but the configs were migrated pi → claude and it was never updated. It now misdescribes the active setup.
-2. **`WORKFLOW.md` is V1, `WORKFLOW_V2.md` is current** — and nothing labels the older one as superseded. Either mark `WORKFLOW.md` as V1/legacy or fold it into V2 so the two don't read as competing.
+2. ~~**`WORKFLOW.md` is V1, `WORKFLOW_V2.md` is current** — and nothing labels the older one as superseded.~~ **Resolved** — the V1/V2 prose docs are removed; the single canonical, harness-agnostic spec is [`../../llm_workflow/LLM_WORKFLOW.md`](../../llm_workflow/LLM_WORKFLOW.md), and these commands are a binding that derives from it.
 3. **No `settings.json` in the repo.** Hooks and harness settings aren't version-controlled, which is exactly what blocks the document-archiving automation drafted in `TODO.md` (a `Stop`/`SessionEnd` hook has nowhere to live). Checking in a `settings.json` would unblock it.
 4. **Python style guide isn't pinned.** Go has a checked-in `references/go-styleguide.md`; Python relies on the model's memory of the Google guide. Asymmetric — a `references/python-styleguide.md` would make Python conformance as reproducible as Go's.
 5. **Two grilling skills overlap.** `grill-me` and `grill-with-docs` need a crisp "use X when…" line, or they'll be picked inconsistently.
