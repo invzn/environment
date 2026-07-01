@@ -21,6 +21,8 @@ To install a specific configuration(s):
 ./script/install.sh --ghostty   # install ghostty configurations
 ./script/install.sh --aerospace # install aerospace configurations
 ./script/install.sh --pi        # install pi coding agent configurations
+./script/install.sh --claude    # install claude code configurations
+./script/install.sh --mempalace # install mempalace configurations
 ```
 
 # Update Repo with Local Configuration
@@ -41,6 +43,8 @@ To update repo with a specific local configuration(s):
 ./script/update_repo.sh --ghostty   # update repo with local ghostty configurations
 ./script/update_repo.sh --aerospace # update repo with local aerospace configurations
 ./script/update_repo.sh --pi        # update repo with local pi coding agent configurations
+./script/update_repo.sh --claude    # update repo with local claude code configurations
+./script/update_repo.sh --mempalace # update repo with local mempalace configurations
 ```
 
 # Structure

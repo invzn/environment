@@ -14,20 +14,30 @@ This is a personal development environment configuration repo (dotfiles, scripts
   - `config/k9s/` — k9s Kubernetes UI config
   - `config/nix/` — Nix package manager config
 - `scripts/` — Install and update scripts
-  - `install.sh` — Symlinks dotfiles to local machine
+  - `install.sh` — Copies dotfiles onto the local machine (reset-and-replace per category)
   - `update_repo.sh` — Copies local machine configs back into repo
 - `nixflakes/` — Nix flake configurations
 - `iterm2/` — iTerm2 themes and font patching
-- `dotfiles/pi/` — Pi coding agent configuration
+- `dotfiles/claude/` — Claude Code configuration (primary coding agent; see `dotfiles/claude/README.md`)
+  - `agents/` — Subagent definitions (implementation experts, reviewers, recon)
+  - `commands/` — Slash commands (`implement`, Workflow V2 `wf-*`, review, `kb-*`)
+  - `skills/` — Skills (`tdd`, `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `llm-kb`)
+  - `references/` — Style guides read by agents (e.g. `go-styleguide.md`)
+  - `CLAUDE.md` — Global instructions applied to every project
+- `dotfiles/pi/` — Pi coding agent configuration (predecessor to the claude config; still installable)
   - `agents/` — Sub-agent definitions (reviewer perspectives, scout, planner, worker)
   - `extensions/subagent/` — Sub-agent extension (index.ts, agents.ts)
-  - `prompts/` — Workflow prompt templates (review, pr-review, etc.)
+  - `prompts/` — Workflow prompt templates (review, pr-review, kb-*, etc.)
+  - `skills/llm-kb/` — LLM Knowledge Base skill for persistent knowledge bases
   - `settings.json` — Pi settings (no secrets)
+- `dotfiles/mempalace/` — MemPalace configuration
+  - `config.json` — MemPalace config (palace directory location)
+  - `pi-to-transcript.py` — Converter script (pi JSONL sessions → transcripts)
 - `brew_list.txt` — Historical Homebrew package list (legacy, not actively maintained)
 
 ## Conventions
 
-- Configs are installed via symlinks using `scripts/install.sh`
+- Configs are installed (copied) using `scripts/install.sh`
 - Each config type has a `--flag` for selective install/update (e.g., `--bash`, `--nvim`, `--ghostty`)
 - Neovim config uses LazyVim with Lua-based plugin management
 - Keep scripts POSIX-compatible where possible; target macOS (zsh/bash)
