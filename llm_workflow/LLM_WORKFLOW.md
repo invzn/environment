@@ -369,7 +369,17 @@ optional orchestrator can run the whole chain, pausing at each gate.
   1. **TDD loop** — red → green → refactor, **one behavior at a time.** (Not
      all-tests-then-all-code; that horizontal split is an anti-pattern.)
   2. **Agent review + fix** — a code-review agent and a standards-review agent
-     (plus optional specialists); findings applied.
+     (plus optional specialists); findings applied. The standards review
+     explicitly screens for the
+     [**design red flags**](./GLOSSARY.md#design-red-flags) from *A Philosophy of
+     Software Design*, since the implementation is where module- and code-level
+     complexity surfaces. The interface-altitude flags (shallow module,
+     information leakage, special-general mixture, overexposure) are also caught
+     at the stage-4 **critique gate** before any code exists; here the full set
+     is checked a second time against the concrete implementation. Beyond
+     flagging, findings drive the repairs the workflow otherwise leaves implicit:
+     **pull complexity downward**, **define errors out of existence**, and
+     **prefer deeper, more general-purpose interfaces.**
   3. **Clean merge request** opened.
   4. **Human review** — the final gate.
 - **Out:** a merge request.

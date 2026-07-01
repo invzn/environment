@@ -10,6 +10,12 @@ A module whose **interface is small relative to the functionality it provides** 
 
 Source: John Ousterhout, *A Philosophy of Software Design* (2018; 2nd ed. 2021).
 
+### Design Red Flags
+
+A set of recurring **warning signs** that a piece of code or a module is more complex than it should be — the book teaches you to recognise these rather than memorise rules. The recurring flags: **shallow module** (interface complex relative to what it hides — see [Shallow Module](#shallow-module)); **information leakage** (one design decision reflected in, and coupling, multiple modules); **temporal decomposition** (structure mirrors order of execution rather than knowledge); **overexposure** (the common case must learn rarely-needed features to use the interface); **pass-through method** (adds interface without adding functionality); **repetition** (a missing abstraction); **special-general mixture** (special-case code contaminating a general-purpose mechanism); **conjoined methods** (two pieces you cannot understand without reading both); **comment repeats code** / **implementation documentation contaminates interface**; **vague name** / **hard to pick name** / **hard to describe** (a fuzzy abstraction); and **nonobvious code**. In this workflow the interface-altitude flags are screened at the stage-4 critique gate, and the full set is screened by the standards review in the Implement stage.
+
+Source: John Ousterhout, *A Philosophy of Software Design* (2018; 2nd ed. 2021).
+
 ### Interface
 
 The surface a module exposes to its callers — everything a caller must understand to use it, including the signatures it offers and the behavioural contract behind them. A **narrow** interface exposes little; a [Deep Module](#deep-module) pairs a narrow interface with substantial hidden implementation, whereas a [Shallow Module](#shallow-module) exposes nearly as much as it hides.
