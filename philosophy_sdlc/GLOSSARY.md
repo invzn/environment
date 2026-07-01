@@ -73,6 +73,12 @@ Source: John Ousterhout, *A Philosophy of Software Design* (2018; 2nd ed. 2021).
 
 ## Process & Mindset
 
+### Design Record
+
+The single per-change markdown file that **accumulates the six stages' outputs** — strategic intent, candidate designs, interface contract, implementation trail, red-flag audit table, and integration verdict — with every gate verdict recorded explicitly and revisions made in place on backtrack. It is the workflow's memory: the artifact each stage reads as its input contract and writes as its output. Its concrete format is specified in [DESIGN-RECORD.md](./DESIGN-RECORD.md). Not a term from Ousterhout; it is this workflow's mechanism for making non-negotiable 2 auditable — a strategic step that isn't recorded in it is assumed not to have happened.
+
+Source: this workflow, after John Ousterhout, *A Philosophy of Software Design*.
+
 ### Tactical vs. Strategic Programming
 
 Two opposed working styles. **Tactical** programming treats getting code *working* as the goal; complexity accretes one expedient choice at a time. **Strategic** programming treats working code as necessary but insufficient — the goal is a *great design* — and pays a continuous ~10–20% investment to keep it. The premise of this workflow is that an LLM is a tactical-programming engine by default, so strategy must be deliberately imposed at every stage.
