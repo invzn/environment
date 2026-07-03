@@ -117,6 +117,14 @@ install_pi () {
     cp -r "$repo_pi_dir/references"/. "$1/$pi_dir/references/"
   fi
 
+  # complexity-first SDLC spec (canonical home is repo's philosophy_sdlc/;
+  # deployed to a stable runtime path the sdlc-* prompts read at runtime).
+  # Runs after the references reset above so it survives.
+  if [ -d "$repo_dir/philosophy_sdlc" ]; then
+    reset_dir "$1/$pi_dir/references/philosophy-sdlc"
+    cp -r "$repo_dir/philosophy_sdlc"/. "$1/$pi_dir/references/philosophy-sdlc/"
+  fi
+
   # skills
   if [ -d "$repo_pi_dir/skills" ]; then
     reset_dir "$1/$pi_dir/skills"
