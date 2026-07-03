@@ -2,14 +2,14 @@
 
 My Claude Code configuration: subagents, slash commands, skills, references, and global instructions. Everything here installs into `~/.claude/` via `scripts/install.sh --claude`.
 
-The setup is built around four cross-cutting ideas: **vertical-slice TDD**, **multi-perspective review**, a **persistent knowledge base (KB)**, and **grilling** plans before building them. Two implementation tracks sit on top: a lightweight **fast path (V1)** and a heavy, design-first **Workflow V2**.
+The setup is built around four cross-cutting ideas: **vertical-slice TDD**, **multi-perspective review**, a **persistent knowledge base (KB)**, and **grilling** plans before building them. Two implementation tracks sit on top: a lightweight **fast path** (`implement`) and the **complexity-first SDLC** (`sdlc`), a design-first track built on *A Philosophy of Software Design*.
 
 ## Layout
 
 | Dir / file | What it holds |
 |---|---|
 | `CLAUDE.md` | Global instructions applied to every project (safety + interaction style) |
-| `agents/` | 12 subagent definitions (experts, reviewers, recon) |
+| `agents/` | 13 subagent definitions (experts, reviewers, recon) |
 | `commands/` | 19 slash commands across four families |
 | `skills/` | 5 skills (TDD, grilling, architecture, KB) |
 | `references/` | Style guides agents read at runtime |
@@ -38,6 +38,7 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 - `security-reviewer` — vulnerabilities, auth, injection, secrets
 - `performance-reviewer` — bottlenecks, scaling, leaks
 - `dx-reviewer` — clarity, naming, docs, onboarding
+- `red-flag-auditor` — adversarial complexity audit against the *Philosophy of Software Design* red flags (the SDLC's stage-3 contract screen and stage-5 gate)
 
 **Recon & support:**
 - `repo-expert` — maps a repo's architecture and locates relevant code for handoff
@@ -50,9 +51,9 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 - `implement` — full TDD workflow, **step mode** (pauses for approval between phases)
 - `implement-auto` — same workflow, **auto mode** (runs end to end)
 
-**Workflow V2 — the heavy track** (design-first; see [`LLM_WORKFLOW.md`](../../llm_workflow/LLM_WORKFLOW.md))
-- `wf` — orchestrator; routes V1 vs V2, then runs all six stages with gates
-- `wf-requirements` → `wf-solution` → `wf-design` → `wf-modules` → `wf-plan` → `wf-implement` — the six stages, each appending to a per-feature design doc
+**Complexity-first SDLC — the heavy track** (design-first; see [`PHILOSOPHY_SDLC.md`](../../philosophy_sdlc/PHILOSOPHY_SDLC.md))
+- `sdlc` — orchestrator; runs all six stages with gates, holding the strategic checkpoints against the model's tactical defaults
+- `sdlc-frame` → `sdlc-design` → `sdlc-interface` → `sdlc-implement` → `sdlc-audit` → `sdlc-integrate` — the six stages, each filling one section of a per-change design record ([`DESIGN-RECORD.md`](../../philosophy_sdlc/DESIGN-RECORD.md))
 
 **Review**
 - `review` — security + performance + architecture + DX in parallel
@@ -77,13 +78,13 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 
 ## How it composes
 
-Routing is on **depth**, not whether an interface changed: work that introduces one or more **deep modules** (narrow interface, substantial hidden implementation) goes heavy; everything else stays on the fast path. (Provisional rule — see `LLM_WORKFLOW.md`.)
+Routing happens at the SDLC's stage-1 gate, derived from the framing itself: if there is **no knowledge worth hiding** (no deep module boundary to place), the work takes the fast path; the human decides.
 
-**Fast path (V1)** — no deep module (shallow changes, trivial interface tweaks, behavior behind a stable interface, mechanical refactors regardless of size):
+**Fast path** — no deep module (shallow changes, trivial interface tweaks, behavior behind a stable interface, mechanical refactors regardless of size):
 `scout-and-plan` (plan) → `implement` / `implement-auto`. The orchestrating thread delegates the TDD loop to the matching language expert, then fans out to reviewers, then applies fixes.
 
-**Heavy track (V2)** — work that introduces deep modules:
-`wf` walks requirements → solution → design → modules → plan → implement, accreting a design doc on the feature branch. A critique gate (`design-review` / `grill-me`) hits the module interfaces before implementation; an MR #0 tracer skeleton proves the contracts compose; then one deep module per MR. A **single** deep module takes **V2-lite** — stages 1–4 + implement, no MR #0. Full rationale in `LLM_WORKFLOW.md`.
+**Heavy track (complexity-first SDLC)** — work that introduces deep modules:
+`sdlc` walks frame → design-it-twice → interface → implement → audit → integrate, filling a per-change design record with every gate verdict written down. Stage 2 spawns *independent* agents so the alternatives aren't anchored on each other; stage 3 writes the interface comment before any code; stage 4 implements under standing instructions (pull complexity downward, define errors out of existence, tests lock the settled contract); stage 5's `red-flag-auditor` blocks the merge on any un-refuted flag; stage 6 rejects the smallest-possible-change and settles the complexity budget. Full rationale in `PHILOSOPHY_SDLC.md`.
 
 **Review flows** — `review` / `pr-review` / `design-review` / `security-review` are thin orchestrators that fan work out to the reviewer agents in parallel and synthesize their findings.
 
@@ -94,7 +95,7 @@ Routing is on **depth**, not whether an interface changed: work that introduces 
 Findings from reviewing the setup — gaps, drift, and rough edges worth addressing:
 
 1. **`AGENTS.md` (repo root) is stale.** It still documents the *pi* coding agent under `dotfiles/pi/`, but the configs were migrated pi → claude and it was never updated. It now misdescribes the active setup.
-2. ~~**`WORKFLOW.md` is V1, `WORKFLOW_V2.md` is current** — and nothing labels the older one as superseded.~~ **Resolved** — the V1/V2 prose docs are removed; the single canonical, harness-agnostic spec is [`../../llm_workflow/LLM_WORKFLOW.md`](../../llm_workflow/LLM_WORKFLOW.md), and these commands are a binding that derives from it.
+2. ~~**`WORKFLOW.md` is V1, `WORKFLOW_V2.md` is current** — and nothing labels the older one as superseded.~~ **Resolved twice** — the V1/V2 prose docs were replaced by `llm_workflow/LLM_WORKFLOW.md`, which has itself been retired in favor of the complexity-first SDLC: the canonical, harness-agnostic spec is now [`../../philosophy_sdlc/PHILOSOPHY_SDLC.md`](../../philosophy_sdlc/PHILOSOPHY_SDLC.md), and the `sdlc-*` commands are the binding that derives from it. The old spec is kept (marked retired) for the machinery the successor deliberately omits — depth routing tiers, the tracer-bullet skeleton / interface lock, MR sizing and batching.
 3. **No `settings.json` in the repo.** Hooks and harness settings aren't version-controlled, which is exactly what blocks the document-archiving automation drafted in `TODO.md` (a `Stop`/`SessionEnd` hook has nowhere to live). Checking in a `settings.json` would unblock it.
 4. **Python style guide isn't pinned.** Go has a checked-in `references/go-styleguide.md`; Python relies on the model's memory of the Google guide. Asymmetric — a `references/python-styleguide.md` would make Python conformance as reproducible as Go's.
 5. **Two grilling skills overlap.** `grill-me` and `grill-with-docs` need a crisp "use X when…" line, or they'll be picked inconsistently.
