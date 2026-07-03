@@ -10,7 +10,6 @@ repo_ghostty_dir="$repo_dotfiles_dir/config/ghostty"
 repo_aerospace_dir="$repo_dotfiles_dir/config/aerospace"
 repo_pi_dir="$repo_dotfiles_dir/pi"
 repo_claude_dir="$repo_dotfiles_dir/claude"
-repo_mempalace_dir="$repo_dotfiles_dir/mempalace"
 
 xdg_config_dir=".config"
 bash_dir=".bash"
@@ -178,26 +177,6 @@ install_claude () {
   fi
 }
 
-install_mempalace () {
-  if [ ! -d "$1/.mempalace" ]; then
-    mkdir -p "$1/.mempalace"
-  fi
-
-  # Config
-  if [ -f "$repo_mempalace_dir/config.json" ]; then
-    cp "$repo_mempalace_dir/config.json" "$1/.mempalace/config.json"
-  fi
-
-  # Converter script
-  if [ -f "$repo_mempalace_dir/pi-to-transcript.py" ]; then
-    cp "$repo_mempalace_dir/pi-to-transcript.py" "$1/.mempalace/pi-to-transcript.py"
-  fi
-
-  # Create runtime directories
-  mkdir -p "$1/.mempalace/palace"
-  mkdir -p "$1/.mempalace/pi-sessions"
-}
-
 install_dir="$HOME"
 tmux_flag="false"
 bash_flag="false"
@@ -207,7 +186,6 @@ ghostty_flag="false"
 aerospace_flag="false"
 pi_flag="false"
 claude_flag="false"
-mempalace_flag="false"
 
 while test $# -gt 0; do
   case "$1" in
@@ -227,7 +205,6 @@ while test $# -gt 0; do
       echo "--aerospace               install aerospace configurations"
       echo "--pi                      install pi coding agent configurations"
       echo "--claude                  install claude code configurations"
-      echo "--mempalace               install mempalace configurations"
       echo "--install-dir=DIR         specify a directory to install to"
       echo "                          (typically your home directory)"
       exit 0
@@ -241,7 +218,6 @@ while test $# -gt 0; do
       aerospace_flag="true"
       pi_flag="true"
       claude_flag="true"
-      mempalace_flag="true"
       shift
       ;;
     --bash)
@@ -270,10 +246,6 @@ while test $# -gt 0; do
       ;;
     --claude)
       claude_flag="true"
-      shift
-      ;;
-    --mempalace)
-      mempalace_flag="true"
       shift
       ;;
     --install-dir*)
@@ -336,8 +308,3 @@ if [ "$claude_flag" == "true" ]; then
   install_claude "$install_dir"
 fi
 
-# mempalace
-if [ "$mempalace_flag" == "true" ]; then
-  echo "Installing mempalace configurations..."
-  install_mempalace "$install_dir"
-fi
