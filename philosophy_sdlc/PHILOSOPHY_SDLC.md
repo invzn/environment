@@ -124,6 +124,13 @@ an earlier decision, after which you re-run forward.
 The recurring question at every stage is the same — *did the model just hand me
 the tactical answer?*
 
+Every stage writes its output into a single per-change
+[**design record**](./GLOSSARY.md#design-record) — one markdown file that
+accumulates through the stages, holds every gate verdict, and is revised in
+place on backtrack. Its concrete format is specified in
+[`DESIGN-RECORD.md`](./DESIGN-RECORD.md); each stage's **Out** below names the
+section it fills.
+
 ### 1. Frame the strategic intent
 
 - **In:** a problem or goal.
@@ -132,7 +139,8 @@ the tactical answer?*
   boundary should fall. Set an explicit
   [**complexity budget**](./GLOSSARY.md#complexity-budget): what is
   allowed to get harder, and what must stay simple. Do *not* prompt for code.
-- **Out:** the owned knowledge, the expected axis of change, the budget.
+- **Out:** the owned knowledge, the expected axis of change, the budget —
+  [§1 of the design record](./DESIGN-RECORD.md#section-1--strategic-intent).
 - **Gate: hard.** This is the cheapest point to correct a misframing — before any
   design or code is committed to it.
 - **The LLM failure this guards:** asked to "make it work," the model frames the
@@ -146,7 +154,8 @@ the tactical answer?*
   designs — not variations, genuinely different abstractions. Judge them on
   **depth** (powerful behavior behind a simple interface) and **information
   hiding** (which decisions stay encapsulated), not on which is easiest to build.
-- **Out:** the chosen abstraction and *why it is deeper* than the runners-up.
+- **Out:** the chosen abstraction and *why it is deeper* than the runners-up —
+  [§2, with runners-up kept](./DESIGN-RECORD.md#section-2--designs-considered).
 - **Gate: hard.** This is the design commitment.
 - **The LLM failure this guards:** the model's first design is its most
   conventional one. Without a forced second attempt, you ship the obvious shallow
@@ -159,7 +168,8 @@ the tactical answer?*
   interface comment as design instrument. If the contract is long, vague, full of
   special cases, or *hard to name*, the abstraction is wrong: **backtrack to
   stage 2**, don't write the code anyway.
-- **Out:** a narrow interface with a contract short enough to describe cleanly.
+- **Out:** a narrow interface with a contract short enough to describe cleanly
+  — [§3, contract verbatim](./DESIGN-RECORD.md#section-3--interface-contract).
 - **Gate: critique.** Run an analytical pass — *is this a deep module, or did we
   just name a shallow one?* Screen specifically for the interface-altitude
   [red flags](./GLOSSARY.md#design-red-flags): shallow module,
@@ -183,7 +193,9 @@ the tactical answer?*
   Tests are written here to **lock** the contract's behavior — not to drive the
   design, which is already settled.
 - **Out:** an implementation behind the unchanged interface, with behavior pinned
-  by tests.
+  by tests; the accountability trail — paths, locked behaviours,
+  `Interface delta: none` — in
+  [§4](./DESIGN-RECORD.md#section-4--implementation).
 - **The LLM failure this guards:** the model exposes knobs and raises exceptions
   by default, pushing complexity *up* to every caller.
 
@@ -204,7 +216,9 @@ the tactical answer?*
     non-obvious *why*.
   Each finding is either repaired (pull complexity down, deepen the interface,
   factor the repetition) or explicitly refuted with reasoning.
-- **Out:** an implementation with every flag repaired or refuted.
+- **Out:** an implementation with every flag repaired or refuted — the audit
+  table in [§5](./DESIGN-RECORD.md#section-5--red-flag-audit); an empty
+  verdict cell blocks stage 6.
 - **Gate: the key LLM-specific gate.** Per non-negotiable 2, an un-refuted flag
   blocks the merge. This is where most model-generated complexity is caught.
 
@@ -217,7 +231,8 @@ the tactical answer?*
   reviews: the final judgment is whether the *system's* total complexity went down
   or at least held flat.
 - **Out:** a merged change that left the codebase no more complex than it found
-  it — ideally less.
+  it — ideally less; the refactors, budget settlement, and human verdict in
+  [§6](./DESIGN-RECORD.md#section-6--integration).
 - **Gate: human.** The final arbiter of "deep enough."
 - **The LLM failure this guards:** the model bolts the change on at the seam,
   optimizing for a minimal diff and leaving the surrounding design to rot.
@@ -260,4 +275,6 @@ built on lives in
 
 *This is the canonical, harness-agnostic specification of the complexity-first
 SDLC. Concrete bindings — a command set, named agents, file layouts — derive from
-this document, not the other way around.*
+this document, not the other way around. The one artifact the specification
+itself commits to is the per-change design record, whose format is defined in
+[`DESIGN-RECORD.md`](./DESIGN-RECORD.md).*
