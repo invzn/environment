@@ -10,7 +10,7 @@ Bash is for read-only commands only here: `git diff`, `git log`, `git show`, `gi
 
 Use the Task tool with `subagent_type: "<agent-name>"` to delegate. Run independent agents in parallel by issuing multiple Task calls in a single response.
 
-This is the **fast path** of the LLM development workflow — for work with **no deep module** (canonical spec: `~/.claude/references/llm-workflow/LLM_WORKFLOW.md`). If discovery reveals the task actually hides a deep module, **stop and escalate** to the heavy track (`/wf` at Design/Module) rather than pushing it through here.
+This is the **fast path** beside the complexity-first SDLC — for work that hides **no knowledge worth designing a boundary for** (no deep module; canonical spec: `~/.claude/references/philosophy-sdlc/PHILOSOPHY_SDLC.md`). If discovery reveals the task actually hides a deep module, **stop and escalate** to `/sdlc` (entering at stage 1, Frame) rather than pushing it through here.
 
 Task: $ARGUMENTS
 

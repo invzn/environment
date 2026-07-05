@@ -20,7 +20,7 @@ This is a personal development environment configuration repo (dotfiles, scripts
 - `iterm2/` — iTerm2 themes and font patching
 - `dotfiles/claude/` — Claude Code configuration (primary coding agent; see `dotfiles/claude/README.md`)
   - `agents/` — Subagent definitions (implementation experts, reviewers, recon)
-  - `commands/` — Slash commands (`implement`, Workflow V2 `wf-*`, review, `kb-*`)
+  - `commands/` — Slash commands (`implement`, complexity-first SDLC `sdlc-*`, review, `kb-*`)
   - `skills/` — Skills (`tdd`, `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `llm-kb`)
   - `references/` — Style guides read by agents (e.g. `go-styleguide.md`)
   - `CLAUDE.md` — Global instructions applied to every project

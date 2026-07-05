@@ -1,5 +1,13 @@
 # An Agent-Agnostic LLM Development Workflow
 
+> **Status: retired.** Superseded by the complexity-first SDLC in
+> [`../philosophy_sdlc/PHILOSOPHY_SDLC.md`](../philosophy_sdlc/PHILOSOPHY_SDLC.md);
+> its `/wf-*` command binding has been removed and this spec is no longer
+> deployed to `~/.claude/references/`. Kept for the machinery the successor
+> deliberately omits — depth routing, Lite/Full tiers, the tracer-bullet
+> skeleton / interface lock, and MR sizing/batching — which may be folded into
+> the successor if usage demands it.
+
 A high-level workflow for building software with LLM agents. It describes
 *what* happens and *why* — the stages, the gates, the routing decision, and the
 single artifact that ties them together — without binding to any particular
