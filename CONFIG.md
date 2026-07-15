@@ -141,16 +141,17 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 | Option | Choices | Selected |
 |---|---|---|
 | Tool | none / restic / borg / btrbk / rsync | **restic** |
-| Destination | local drive / cloud / NAS | **cloud-first — Backblaze B2 (Object Lock enabled)** |
+| Destination | local drive / cloud / NAS | **cloud-first — Backblaze B2** (private bucket, all prior versions kept; **no Object Lock** — see Retention) |
 | Scope | /home+/etc / /home / full | **/home only** |
 | Encryption | — | **client-side AES-256** (B2 stores ciphertext only; strength = repo-password entropy — 8-word CSPRNG diceware, decision #8) |
-| Daily key rights | full / append-only | **append-only (no delete)** — a compromised host can't destroy offsite history (decision #4) |
+| Daily key rights | full / append-only | **append-only (no delete)** — a compromised host can't destroy offsite history; worst case is hiding files, recoverable while the bucket keeps prior versions (decision #4) |
 | Schedule | — | **daily systemd timer** (Persistent, randomized) |
-| Retention | — | **B2 Object Lock + lifecycle (time-based)** — append-only key, no client-side `restic forget --prune` (decision #4; replaces count-based 7/4/6) |
-| Monitoring | — | **login-time staleness notifier (`systemctl --user`) + monthly `restic check`** (decision #5/#10) |
+| Retention | — | **quarterly `restic-maintenance`** — `forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6` + `prune` + full `check`, using a full-rights key pasted from the password manager (never stored on the laptop). Object Lock rejected: per-object retention expires while restic packs stay referenced indefinitely, and it blocks `prune` (decision #4) |
+| Repo locks | — | append-only key can't delete restic's per-run locks → lifecycle rule on the `<host>/home/locks/` prefix ONLY (hide 1 d → delete); monthly check runs `--no-lock`; `restic unlock` during maintenance |
+| Monitoring | — | **login-time staleness notifier (`systemctl --user`) + monthly `restic check --no-lock` + maintenance-overdue nag (>120 d)** (decision #5/#10) |
 | Recovery prereqs | — | **off-device password manager + printed emergency card** (decision #6) |
 | Excludes | — | **/home/.snapshots (decision #2), caches, trash, node_modules/target/.venv, etc.** |
-| Setup | — | run `setup-backups.sh` after creating a B2 bucket + append-only key |
+| Setup | — | run `setup-backups.sh` after creating the B2 bucket, both keys (daily append-only on-device · maintenance full-rights in the password manager), and the locks-prefix lifecycle rule |
 | Local drive copy | yes / no | ⏳ **deferred** (2nd restic repo later — fast restores + a place for tiered count-based retention, decision #4) |
 
 ## 16 · Maintenance & verification
@@ -167,9 +168,13 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 In scope: **opportunistic theft** (device stolen, never returned) and a **B2 data
 breach** exposing encrypted backups for future ("harvest-now-decrypt-later")
 decryption. FDE covers theft-at-rest; client-side AES-256 + a high-entropy repo
-password covers the breach (decision #7/#8). **Out of scope:** targeted physical
-tamper (evil-maid), network adversaries, nation-state. Several deferrals below
-follow directly from this scope.
+password covers the breach (decision #7/#8). Ransomware on the laptop is
+covered by the append-only daily B2 key (can't delete history). A stolen B2
+*account* login could still destroy history — mitigated by credential hygiene
+(unique password + 2FA, stored off-device), not Object Lock, whose per-object
+retention would expire while restic packs stay live. **Out of scope:** targeted
+physical tamper (evil-maid), network adversaries, nation-state. Several
+deferrals below follow directly from this scope.
 
 ## Consciously not configured
 | Thing | Status | Why |

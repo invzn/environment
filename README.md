@@ -17,6 +17,7 @@ this kit automates.
 | `chroot-setup.sh` | inside `arch-chroot` (called by `install.sh`) | Locale, users, initramfs, bootloader, i3, zram, firewall, snapshots, time sync |
 | `post-install.sh` | first boot, as your user | AUR helper + `system76-power`/DKMS + firmware updates |
 | `enable-hibernate.sh` | later, as root (optional) | Adds a NOCOW Btrfs swapfile + resume plumbing for hibernate |
+| `setup-backups.sh` | later, as root | restic → B2 daily backups + staleness notifier + quarterly `restic-maintenance` |
 | `test-vm.sh` | your dev machine (macOS/Linux) | Dry-run the installer in a throwaway UEFI QEMU VM |
 | `archiso/build-iso.sh` | an Arch box with `archiso` | Bundles the scripts into a bootable `.iso` |
 | `archiso/extra-packages.x86_64` | — | Packages added to the *live* installer image |
@@ -67,7 +68,10 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
 - [ ] **Power/charge** — `system76-power charge-thresholds`, fan behaviour sane.
 - [ ] **Firmware** — `fwupdmgr get-updates`.
 - [ ] **Backups** — `systemctl --user enable --now restic-staleness-check.timer`,
-      run the first `restic-backup`, confirm a snapshot lands in B2.
+      run the first `restic-backup`, confirm a snapshot lands in B2 (a final
+      lock-cleanup error is expected with the append-only key — success is the
+      fresh `last-success` stamp), then `systemctl start restic-check.service`
+      to confirm `check --no-lock` works.
 - [ ] **SMART alerts** — `systemctl --user enable --now smartd-alert-check.timer`
       (desktop notification for disk warnings; root smartd can't notify your session).
 
@@ -78,7 +82,7 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
 | Kernel | **`linux` + `linux-lts` lifeboat**, fallback-initramfs entries — bad updates are a boot-menu pick |
 | Swap | **zram** (½ RAM, zstd); hibernate deferred to `enable-hibernate.sh` |
 | Snapshots | **snapper + snap-pac** — pacman pre/post on `@`, daily timeline on `@home` (`/boot` excluded — see kernel-rollback note) |
-| Backups | **restic → B2**, append-only key + Object Lock, login-staleness notifier + monthly `restic check` |
+| Backups | **restic → B2**, append-only daily key; retention = quarterly `restic-maintenance` (full-rights key kept off-device); staleness notifier + monthly `restic check --no-lock` |
 | Firewall | **nftables**, default-drop inbound, nothing opened |
 | TRIM | **weekly `fstrim.timer`** (LUKS `--allow-discards`), no continuous discard |
 | Maintenance | **`systemd-boot-update`, `fstrim`, monthly `btrfs scrub`, `smartd`** enabled |

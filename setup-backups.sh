@@ -2,7 +2,7 @@
 #
 # Backup setup (decision #8): restic -> Backblaze B2, client-side encrypted,
 # /home scope, daily systemd timer. Run ONCE on the installed system as root,
-# AFTER you've created a B2 bucket + an APPEND-ONLY application key.
+# AFTER you've created the B2 bucket + keys described below.
 #
 # Why restic + B2: AES-256 client-side encryption — B2 only ever stores
 # ciphertext. The random 256-bit master key is wrapped by a scrypt-derived key,
@@ -10,19 +10,51 @@
 # #8: 8-word diceware, generated with real randomness). The repo is deduplicated
 # + versioned and offsite by construction.
 #
-# Ransomware resistance (decision #4): the daily credential on this always-on
-# laptop is an APPEND-ONLY B2 key — it can add data but NOT delete it, so a
-# compromised host cannot destroy the offsite history. Retention is therefore
-# enforced SERVER-SIDE by B2 Object Lock + a lifecycle rule, NOT by
-# `restic forget --prune` (which would need the delete rights we don't grant).
+# Ransomware resistance (decision #4): the credential stored ON this laptop is
+# an APPEND-ONLY B2 key — it can add data but NOT delete it, so a compromised
+# host cannot destroy the offsite history. (Worst case with a stolen append-only
+# key: the attacker "hides" files — hide is a write operation on B2 — but hidden
+# versions are not destroyed while the bucket keeps all prior versions; they
+# are recoverable from the B2 console/API.)
+#
+# Retention therefore does NOT run from this machine's stored key. It runs
+# ~quarterly via `sudo restic-maintenance` (installed below), which prompts for
+# a separate FULL-RIGHTS maintenance key that lives ONLY in your password
+# manager — never on this disk — and then runs:
+#   unlock -> forget (7 daily / 4 weekly / 6 monthly) -> prune -> check
+#
+# Deliberately NOT used (decision #4):
+#   * B2 Object Lock — its per-object retention expires N days after upload,
+#     while restic pack files stay live and referenced for years. So it doesn't
+#     protect old history from an account takeover, and it blocks `prune`.
+#     Account takeover is mitigated by credential hygiene instead: strong
+#     unique B2 password + 2FA, stored off-device.
+#   * bucket-wide lifecycle rules — a "delete old versions" rule would
+#     eventually delete LIVE pack files (restic packs are immutable and
+#     referenced indefinitely) and silently destroy the repo. The default
+#     "keep all versions" is what makes the append-only design safe.
+#
+# One restic wrinkle with an append-only key: restic writes a lock file each
+# run and cannot delete it afterwards, so locks/ accumulates stale entries.
+#   * the daily runner judges success by restic's own "snapshot <id> saved"
+#     summary, so the expected lock-cleanup failure isn't a failed backup
+#   * the monthly integrity check runs `restic check --no-lock`
+#   * `restic-maintenance` clears leftovers with `restic unlock` (has delete)
+#   * a lifecycle rule scoped to ONLY the locks/ prefix (below) keeps the
+#     clutter from piling up between maintenance runs
 #
 # Create first at backblaze.com:
-#   * a private B2 bucket (e.g. lemur-backups) with OBJECT LOCK enabled
-#   * a DEFAULT lifecycle / retention rule matching how long you want history
-#     kept. NOTE: B2 lifecycle is TIME-based only, so this replaces restic's
-#     count-based 7/4/6 with e.g. "keep versions 180 days" (see CONFIG #15).
-#   * an application key scoped to that bucket WITHOUT the deleteFiles
-#     capability (read + write, no delete) -> note the keyID and key
+#   * a private B2 bucket (e.g. lemur-backups). Object Lock NOT needed. NO
+#     bucket-wide lifecycle rule — keep all versions (the default).
+#   * one lifecycle rule scoped to the prefix   <hostname>/home/locks/   :
+#     hide after 1 day, delete hidden after 1 day. restic locks are ephemeral;
+#     hidden locks disappear from restic's view. Do NOT widen this prefix.
+#   * the DAILY key: an application key scoped to the bucket WITHOUT the
+#     deleteFiles capability (read + write, no delete) -> keyID + key go on
+#     this machine (prompted below).
+#   * the MAINTENANCE key: a second application key WITH full rights to the
+#     bucket. Store it ONLY in your password manager; you'll paste it when
+#     running `sudo restic-maintenance` (~quarterly).
 #
 # RECOVERY PREREQUISITES (decision #6) — do these BEFORE relying on backups:
 #   * Your password manager must be OFF-DEVICE / recoverable (cloud-synced or
@@ -48,12 +80,13 @@ chmod 700 /etc/restic
 # --- Credentials (prompted; secrets never echoed or passed as args) --------
 cat <<'NOTE'
 
-Use a B2 application key WITHOUT delete permission (append-only). Retention is
-handled by the bucket's Object Lock + lifecycle rule — not by this machine.
+Use the DAILY B2 application key here — the one WITHOUT delete permission
+(append-only). The full-rights MAINTENANCE key stays in your password manager
+and is only ever typed into `sudo restic-maintenance`.
 NOTE
 read -rp  "B2 bucket name: " BUCKET
 [ -n "$BUCKET" ] || die "bucket required"
-read -rp  "B2 application key ID (append-only key): " KEYID
+read -rp  "B2 application key ID (append-only DAILY key): " KEYID
 [ -n "$KEYID" ] || die "key ID required"
 read -rsp "B2 application key: " APPKEY; echo
 [ -n "$APPKEY" ] || die "application key required"
@@ -118,24 +151,61 @@ cat > /etc/restic/excludes.txt <<'EOF'
 EOF
 
 # --- Backup runner ---------------------------------------------------------
-# No `restic forget --prune` (decision #4): the append-only key can't delete,
-# and retention lives in B2 Object Lock + lifecycle. Writes a success/failure
-# stamp the desktop staleness-notifier reads (decision #5).
+# No `restic forget --prune` here (decision #4): the append-only key can't
+# delete; retention runs quarterly via restic-maintenance with the off-device
+# key. Writes a success/failure stamp the desktop staleness-notifier reads
+# (decision #5).
 install -d -m 755 /var/lib/restic-backup
 cat > /usr/local/bin/restic-backup <<'EOF'
 #!/usr/bin/env bash
+# Daily backup runner. The append-only key cannot delete restic's per-run lock
+# file, so a fully successful backup can still exit non-zero on that final
+# cleanup — restic's "snapshot <id> saved" summary line is the ground truth
+# for "the backup landed".
 set -euo pipefail
-set -a; . /etc/restic/b2.env; set +a
 fail() { date -u +%s > /var/lib/restic-backup/last-failure; exit 1; }
 trap fail ERR
+set -a; . /etc/restic/b2.env; set +a
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
 restic backup /home \
   --one-file-system \
   --exclude-file=/etc/restic/excludes.txt \
   --exclude-caches \
-  --tag home
+  --tag home 2>&1 | tee "$log" && rc=0 || rc=$?
+if [ "$rc" -ne 0 ] && ! grep -Eq '^snapshot [0-9a-f]+ saved$' "$log"; then
+  fail
+fi
 date -u +%s > /var/lib/restic-backup/last-success
 EOF
 chmod 755 /usr/local/bin/restic-backup
+
+# --- Maintenance: retention + prune + full check (quarterly, interactive) ---
+# The ONLY place delete rights are used. The full-rights key is pasted from
+# the password manager at runtime and never touches the disk (decision #4).
+cat > /usr/local/bin/restic-maintenance <<'EOF'
+#!/usr/bin/env bash
+# Quarterly restic repo maintenance:
+#   unlock — clear stale locks the append-only daily key couldn't delete
+#   forget — retention: keep 7 daily / 4 weekly / 6 monthly snapshots
+#   prune  — actually delete the data only forgotten snapshots referenced
+#   check  — full integrity check, this time under a real exclusive lock
+set -euo pipefail
+[ "$(id -u)" -eq 0 ] || { echo "run as root:  sudo restic-maintenance" >&2; exit 1; }
+set -a; . /etc/restic/b2.env; set +a
+echo "Paste the full-rights MAINTENANCE key from your password manager."
+read -rp  "B2 maintenance key ID: " B2_ACCOUNT_ID
+[ -n "$B2_ACCOUNT_ID" ] || exit 1
+read -rsp "B2 maintenance key: " B2_ACCOUNT_KEY; echo
+[ -n "$B2_ACCOUNT_KEY" ] || exit 1
+export B2_ACCOUNT_ID B2_ACCOUNT_KEY
+restic unlock
+restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+restic check
+date -u +%s > /var/lib/restic-backup/last-maintenance
+echo "Maintenance complete."
+EOF
+chmod 755 /usr/local/bin/restic-maintenance
 
 # --- Initialise the repo (idempotent) --------------------------------------
 set -a; . /etc/restic/b2.env; set +a
@@ -145,6 +215,8 @@ else
   echo ">> Initialising restic repo at $RESTIC_REPOSITORY"
   restic init
 fi
+# Start the maintenance-overdue clock (the login notifier nags after ~120 days).
+[ -f /var/lib/restic-backup/last-maintenance ] || date -u +%s > /var/lib/restic-backup/last-maintenance
 
 # --- Daily backup timer (low-priority, network-aware) ----------------------
 cat > /etc/systemd/system/restic-backup.service <<'EOF'
@@ -174,8 +246,10 @@ WantedBy=timers.target
 EOF
 
 # --- Monthly integrity check (decision #10) --------------------------------
-# "backup ran" != "backup is restorable". restic check (read-only — works with
-# the append-only key) verifies repo structure.
+# "backup ran" != "backup is restorable". --no-lock because the append-only key
+# can create but not delete locks, and `check` normally wants an exclusive one.
+# Lock-free checking is safe unless it overlaps a running backup — rare, and
+# the worst case is a false alarm; re-run to confirm.
 cat > /etc/systemd/system/restic-check.service <<'EOF'
 [Unit]
 Description=restic repository integrity check
@@ -187,7 +261,7 @@ Type=oneshot
 Nice=15
 IOSchedulingClass=idle
 EnvironmentFile=/etc/restic/b2.env
-ExecStart=/usr/bin/restic check
+ExecStart=/usr/bin/restic check --no-lock
 EOF
 
 cat > /etc/systemd/system/restic-check.timer <<'EOF'
@@ -207,17 +281,24 @@ EOF
 # A root timer that fails silently is Schroedinger's backup, and a root job
 # can't reach your session D-Bus to notify-send anyway. So instead of pushing
 # FROM the backup, we check freshness when YOU log in: a `systemctl --user` unit
-# (runs IN your i3 session) reads the stamp and warns if the last success is
-# stale or the last run failed. Catches both "run failed" and "never ran".
+# (runs IN your i3 session) reads the stamps and warns if the last success is
+# stale, the last run failed, or maintenance is overdue. Catches "run failed",
+# "never ran", and "retention never happens".
 cat > /usr/local/bin/restic-staleness-check <<'EOF'
 #!/usr/bin/env bash
 # Runs as your normal user inside the graphical session.
 set -euo pipefail
 STAMP=/var/lib/restic-backup/last-success
 FAILED=/var/lib/restic-backup/last-failure
-STALE_SECS=129600   # 36h
+MAINT=/var/lib/restic-backup/last-maintenance
+STALE_SECS=129600      # 36h
+MAINT_STALE=10368000   # 120 days — maintenance is quarterly-ish
 now=$(date -u +%s)
 note() { command -v notify-send >/dev/null && notify-send -u critical "Backup" "$1" || echo "Backup: $1"; }
+
+if [ -f "$MAINT" ] && [ $(( now - $(cat "$MAINT") )) -gt "$MAINT_STALE" ]; then
+  note "restic maintenance is $(( (now - $(cat "$MAINT")) / 86400 )) days overdue — run: sudo restic-maintenance"
+fi
 
 if [ -f "$FAILED" ] && { [ ! -f "$STAMP" ] || [ "$(cat "$FAILED")" -gt "$(cat "$STAMP")" ]; }; then
   note "Last restic run FAILED. Check: journalctl -u restic-backup"
@@ -237,7 +318,7 @@ chmod 755 /usr/local/bin/restic-staleness-check
 install -d -m 755 /etc/systemd/user
 cat > /etc/systemd/user/restic-staleness-check.service <<'EOF'
 [Unit]
-Description=Warn if restic backups are stale or last run failed
+Description=Warn if restic backups are stale, failed, or maintenance is overdue
 
 [Service]
 Type=oneshot
@@ -268,15 +349,24 @@ it's resumable, later runs are incremental).
 
   Start the first backup now:  systemctl start restic-backup.service
   Watch progress:              journalctl -u restic-backup -f
-  List snapshots:              set -a; . /etc/restic/b2.env; set +a; restic snapshots
+  List snapshots:              set -a; . /etc/restic/b2.env; set +a; restic snapshots --no-lock
   Restore a file/dir:          restic restore latest --target /tmp/restore --include /home/you/file
+
+VERIFY the first cycle (two append-only wrinkles, both expected):
+  * the backup may end with a lock-cleanup error — that is fine; success is
+    the "snapshot <id> saved" line + a fresh /var/lib/restic-backup/last-success
+  * then confirm the check path works:  systemctl start restic-check.service
+    (runs `restic check --no-lock`; confirm your restic version accepts it)
 
 ONE MANUAL STEP (decision #5) — enable the desktop staleness notifier as your
 NORMAL user (a root script cannot enable --user units for you):
   systemctl --user enable --now restic-staleness-check.timer
 
-Retention is enforced by B2 Object Lock + lifecycle (decision #4), NOT on this
-machine. Confirm the bucket's lifecycle rule keeps the history you want.
+RETENTION (decision #4) runs ~quarterly, never from this machine's stored key:
+  sudo restic-maintenance
+(paste the MAINTENANCE key from your password manager; keeps 7 daily /
+4 weekly / 6 monthly, prunes, full check. The login notifier nags when it is
+>120 days overdue.)
 
 Recovery (decision #6): your restic repo password + Backblaze login MUST live
 off this device — password manager AND printed card. They are the ONLY way to
