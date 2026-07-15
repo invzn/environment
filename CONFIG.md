@@ -4,6 +4,11 @@ Every meaningful Arch decision, its option space, and the selection baked into
 this kit. **Legend:** **bold** = selected · *default* = Arch default not overridden ·
 ⏳ = consciously deferred/off.
 
+> **Note on "decision #N" references:** the scripts and README cite decision
+> numbers from the original planning discussion, which do **not** correspond to
+> this file's section numbers. Treat them as opaque labels tying related
+> choices together; this file is the authoritative record of what was decided.
+
 ## 1 · Firmware & boot
 | Option | Choices | Selected |
 |---|---|---|

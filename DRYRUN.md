@@ -33,10 +33,11 @@ ping -c2 archlinux.org     # proves internet/DNS works
 > If `archlinux.org` fails but `10.0.2.2` works:
 > `systemctl restart systemd-networkd systemd-resolved` and retry.
 
-**3. Pull the scripts from your Mac** (all four, same directory):
+**3. Pull the scripts from your Mac** (all five, same directory — install.sh
+stages the last three into the new user's home, matching a real install):
 ```bash
 mkdir -p kit && cd kit
-for f in install.sh chroot-setup.sh post-install.sh enable-hibernate.sh; do
+for f in install.sh chroot-setup.sh post-install.sh enable-hibernate.sh setup-backups.sh; do
   curl -fLO http://10.0.2.2:8000/$f
 done
 chmod +x *.sh
@@ -80,4 +81,3 @@ server in Terminal A.
   running, or you're not in the `arch-lemurpro` dir where the `.sh` files live.
 - **Reset and start over:** `./test-vm.sh --fresh --iso <path>` wipes the throwaway
   disk + UEFI vars in `./.vm/` and begins clean.
-```

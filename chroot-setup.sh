@@ -14,6 +14,7 @@ NEWHOST="$1"; USERNAME="$2"; TIMEZONE="$3"; LOCALE="$4"; KEYMAP="$5"; LUKS_PART=
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
 sed -i "s/^#\s*${LOCALE} /${LOCALE} /" /etc/locale.gen
+grep -q "^${LOCALE} " /etc/locale.gen || { echo "ERROR: failed to uncomment ${LOCALE} in /etc/locale.gen" >&2; exit 1; }
 locale-gen
 echo "LANG=$LOCALE"   > /etc/locale.conf
 echo "KEYMAP=$KEYMAP" > /etc/vconsole.conf
@@ -173,6 +174,9 @@ pacman -S --noconfirm --needed \
 # --- User + sudo -----------------------------------------------------------
 useradd -mG wheel -s /bin/bash "$USERNAME"
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL$/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+# The sed no-ops silently if upstream reformats the comment — and a user with
+# no sudo makes post-install.sh dead on arrival. Fail loudly instead.
+grep -q '^%wheel ALL=(ALL:ALL) ALL$' /etc/sudoers || { echo "ERROR: failed to enable %wheel in /etc/sudoers" >&2; exit 1; }
 
 echo 'exec i3' > "/home/$USERNAME/.xinitrc"
 chown "$USERNAME:$USERNAME" "/home/$USERNAME/.xinitrc"
@@ -202,7 +206,9 @@ table inet filter {
         ct state established,related accept
         iif "lo" accept
         ip protocol icmp accept
-        ip6 nexthdr ipv6-icmp accept        # mandatory for IPv6 to work
+        # meta l4proto (not `ip6 nexthdr`) so ICMPv6 behind extension headers
+        # still matches — NDP/RA is ICMPv6; dropping it kills IPv6 entirely
+        meta l4proto ipv6-icmp accept
         # no inbound services opened (decision: none for now)
     }
     chain forward {
@@ -234,6 +240,7 @@ snapper_set root NUMBER_CLEANUP yes
 snapper_set root NUMBER_LIMIT 10
 snapper_set root NUMBER_LIMIT_IMPORTANT 10
 snapper_set root ALLOW_USERS "$USERNAME"
+snapper_set root SYNC_ACL yes   # ALLOW_USERS grants snapper ops only; ACLs let $USERNAME read the snapshot files
 
 # home: modest daily timeline for file recovery, no hourly churn
 snapper --no-dbus -c home create-config /home
@@ -245,12 +252,15 @@ snapper_set home TIMELINE_LIMIT_WEEKLY 4
 snapper_set home TIMELINE_LIMIT_MONTHLY 0
 snapper_set home TIMELINE_LIMIT_YEARLY 0
 snapper_set home ALLOW_USERS "$USERNAME"
+snapper_set home SYNC_ACL yes
 
 systemctl enable snapper-timeline.timer   # drives the @home daily timeline
 systemctl enable snapper-cleanup.timer    # prunes per the limits above
 
 # --- Passwords (interactive) ----------------------------------------------
+# Retry loops: exhausting passwd's attempts would otherwise abort (set -e) the
+# whole install at the very last step, after everything else succeeded.
 echo ">> Set the ROOT password:"
-passwd
+until passwd; do echo ">> try again"; done
 echo ">> Set the password for '$USERNAME':"
-passwd "$USERNAME"
+until passwd "$USERNAME"; do echo ">> try again"; done

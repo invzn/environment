@@ -9,7 +9,9 @@
 #   * creates a dedicated, snapshot-excluded @swap subvolume mounted at /swap
 #   * creates a NOCOW Btrfs swapfile >= RAM (so the hibernate image always fits)
 #   * computes the physical resume offset
-#   * adds resume=/resume_offset= to the systemd-boot entry + an fstab line
+#   * adds resume=/resume_offset= to ALL systemd-boot entries + an fstab line
+#     (all four entries share the same options line, and hibernating from a
+#     session booted on the LTS/fallback entries must resume too)
 #
 # The swapfile lives INSIDE your LUKS volume, so the hibernate image is
 # encrypted at rest and resume happens cleanly after the boot-time unlock.
@@ -55,7 +57,8 @@ if [ ! -f "$SWAPFILE" ]; then
   # btrfs-progs >= 6.1 sets NOCOW + correct flags for us.
   btrfs filesystem mkswapfile --size "${size_gib}g" --uuid clear "$SWAPFILE"
 fi
-swapon "$SWAPFILE" 2>/dev/null || true
+# Activate unless already active (don't swallow real swapon errors).
+swapon --show=NAME --noheadings | grep -qx "$SWAPFILE" || swapon "$SWAPFILE"
 
 # Persist the swapfile in fstab, lower priority than zram so zram is used first.
 if ! grep -q "$SWAPFILE" /etc/fstab; then
@@ -67,12 +70,17 @@ offset="$(btrfs inspect-internal map-swapfile -r "$SWAPFILE")"
 [ -n "$offset" ] || die "could not determine resume_offset"
 echo ">> resume_offset = $offset"
 
-if grep -q 'resume=' "$ENTRY"; then
-  echo ">> resume= already present in $ENTRY — leaving boot entry as-is"
-else
-  sed -i "/^options / s|\$| resume=${ROOT_DEV} resume_offset=${offset}|" "$ENTRY"
-  echo ">> patched $ENTRY"
-fi
+# Patch every entry, not just the default: an image written while booted on
+# the LTS or fallback entry would otherwise never resume (and picking an
+# unpatched entry after hibernating silently discards the session).
+for entry in /boot/loader/entries/*.conf; do
+  if grep -q 'resume=' "$entry"; then
+    echo ">> resume= already present in $entry — leaving as-is"
+  else
+    sed -i "/^options / s|\$| resume=${ROOT_DEV} resume_offset=${offset}|" "$entry"
+    echo ">> patched $entry"
+  fi
+done
 
 # systemd-based initramfs handles resume from the cmdline; rebuild to be safe.
 mkinitcpio -P

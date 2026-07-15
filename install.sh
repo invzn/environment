@@ -50,7 +50,7 @@ echo ">> Partitioning $DISK"
 sgdisk --zap-all "$DISK"
 sgdisk -n1:0:+"$EFI_SIZE" -t1:ef00 -c1:EFI       "$DISK"
 sgdisk -n2:0:0            -t2:8309 -c2:cryptroot "$DISK"
-partprobe "$DISK"; sleep 1
+partprobe "$DISK"; udevadm settle
 
 # --- Encrypt ---------------------------------------------------------------
 echo ">> Creating LUKS2 container on $LUKS_PART (you'll set the disk passphrase)"
@@ -97,7 +97,7 @@ fi
 # bad `linux` update is a menu pick, not a live-USB rescue. timesyncd ships
 # with systemd.
 echo ">> pacstrap base system"
-pacstrap -K /mnt base linux linux-lts linux-firmware btrfs-progs intel-ucode \
+pacstrap -K /mnt base linux linux-lts linux-firmware btrfs-progs dosfstools intel-ucode \
   vim sudo networkmanager iwd \
   mesa vulkan-icd-loader vulkan-intel \
   zram-generator nftables snapper snap-pac smartmontools

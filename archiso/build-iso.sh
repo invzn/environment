@@ -15,7 +15,9 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KIT="$(cd "$HERE/.." && pwd)"
 SRC=/usr/share/archiso/configs/releng
-WORK="${WORK:-/tmp/archlive-lemurpro}"
+# /var/tmp, NOT /tmp: /tmp is tmpfs on Arch and the mkarchiso work dir runs to
+# several GB — building there eats RAM or dies with ENOSPC.
+WORK="${WORK:-/var/tmp/archlive-lemurpro}"
 OUT="${OUT:-$HERE/out}"
 
 [ "$(id -u)" -eq 0 ] || { echo "run as root"; exit 1; }
