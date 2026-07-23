@@ -45,7 +45,7 @@ chmod +x *.sh
 
 **4. Run the installer** (disk is `/dev/nvme0n1` — the default — so no `DISK=` needed):
 ```bash
-USERNAME=chris NEWHOST=lemur ./install.sh
+NEWUSER=chris NEWHOST=lemur ./install.sh
 ```
 Respond to the prompts, in order:
 - `Type the disk path (/dev/nvme0n1) to confirm:` → type **`/dev/nvme0n1`** ↵
@@ -73,6 +73,11 @@ If all three happen, the installer is verified end-to-end. Then `Ctrl+C` the Pyt
 server in Terminal A.
 
 ## Gotchas
+- **`NEWUSER`, never `USERNAME`:** the archiso shell is zsh, where `USERNAME` is a
+  special parameter tied to the process's user — `USERNAME=chris ./install.sh`
+  reaches the script as `USERNAME=root` (with a cryptic
+  `fatal library error, lookup self` from zsh). The installer now refuses to run
+  if `USERNAME` is set.
 - **It'll be slow** — Apple Silicon emulating x86_64. `pacstrap` and `mkinitcpio` are
   the long poles; slowness is not a hang.
 - **Mouse capture:** click into the window to grab, **Ctrl+Alt+G** to release (install

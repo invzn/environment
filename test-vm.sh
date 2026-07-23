@@ -97,6 +97,12 @@ case "$OS" in
     ;;
 esac
 
+# --- Display: zoom-to-fit scales the guest to the window/fullscreen size ----
+case "$OS" in
+  Darwin) DISPLAY_OPT="cocoa,zoom-to-fit=on";;
+  *)      DISPLAY_OPT="gtk,zoom-to-fit=on";;
+esac
+
 # --- Throwaway disk + UEFI vars --------------------------------------------
 mkdir -p "$HERE/.vm"
 if [ "$FRESH" = 1 ]; then rm -f "$DISK_IMG" "$VARS_IMG"; fi
@@ -119,11 +125,15 @@ ARGS=(
   -smp "$CPUS"
   -m "$RAM"
   -vga std
+  -display "$DISPLAY_OPT"
   -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE"
   -drive if=pflash,format=raw,file="$VARS_IMG"
   -drive if=none,id=nvm,file="$DISK_IMG",format=qcow2
   -device nvme,serial=lemurtest,drive=nvm
-  -nic user,model=virtio-net-pci
+  # hostfwd: `ssh -p 2222 <user>@localhost` from the host — the Cocoa display
+  # has no clipboard sharing, so a real terminal is the usable path for pasting
+  # keys/passwords during testing. Bound to 127.0.0.1 (host-only).
+  -nic user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:2222-:22
 )
 if [ "$MODE" = install ]; then
   ARGS+=( -cdrom "$ISO" -boot order=d,menu=on )

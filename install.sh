@@ -13,7 +13,10 @@ set -euo pipefail
 ### ---------------- CONFIG (override via env, e.g. DISK=/dev/sda ./install.sh) ----------------
 DISK="${DISK:-/dev/nvme0n1}"          # target disk — WILL BE WIPED
 NEWHOST="${NEWHOST:-lemur}"           # hostname
-USERNAME="${USERNAME:-user}"          # your login name
+# NEWUSER, not USERNAME: zsh (the archiso shell) treats USERNAME as a special
+# parameter tied to the process's user — `USERNAME=x ./install.sh` arrives here
+# as USERNAME=root and the install silently targets root. Found the hard way.
+NEWUSER="${NEWUSER:-user}"            # your login name
 TIMEZONE="${TIMEZONE:-America/Puerto_Rico}"
 LOCALE="${LOCALE:-en_US.UTF-8}"
 KEYMAP="${KEYMAP:-us}"
@@ -28,6 +31,8 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 [ "$(id -u)" -eq 0 ]      || die "run as root"
 [ -d /sys/firmware/efi ]  || die "not booted in UEFI mode — fix firmware settings first"
 [ -b "$DISK" ]            || die "$DISK is not a block device"
+[ -z "${USERNAME:-}" ]    || die "USERNAME is ignored (zsh special parameter) — unset it and use NEWUSER=<name> instead"
+[ "$NEWUSER" != "root" ]  || die "NEWUSER must not be root"
 ping -c1 -W3 archlinux.org >/dev/null 2>&1 || die "no network — connect first (iwctl / nmcli)"
 
 # nvme/mmc use a 'p' between disk and partition number; sata/scsi do not.
@@ -108,14 +113,14 @@ genfstab -U /mnt >> /mnt/etc/fstab
 echo ">> Running in-chroot configuration"
 install -m0755 "$HERE/chroot-setup.sh" /mnt/root/chroot-setup.sh
 arch-chroot /mnt /root/chroot-setup.sh \
-  "$NEWHOST" "$USERNAME" "$TIMEZONE" "$LOCALE" "$KEYMAP" "$LUKS_PART"
+  "$NEWHOST" "$NEWUSER" "$TIMEZONE" "$LOCALE" "$KEYMAP" "$LUKS_PART"
 rm -f /mnt/root/chroot-setup.sh
 
 # Stage the post-boot scripts in the new user's home for convenience.
 for s in post-install.sh enable-hibernate.sh setup-backups.sh; do
   if [ -f "$HERE/$s" ]; then
-    install -m0755 "$HERE/$s" "/mnt/home/$USERNAME/$s"
-    arch-chroot /mnt chown "$USERNAME:$USERNAME" "/home/$USERNAME/$s"
+    install -m0755 "$HERE/$s" "/mnt/home/$NEWUSER/$s"
+    arch-chroot /mnt chown "$NEWUSER:$NEWUSER" "/home/$NEWUSER/$s"
   fi
 done
 
@@ -123,7 +128,7 @@ echo
 echo "==================================================================="
 echo " Base install complete."
 echo "   1) umount -R /mnt && reboot"
-echo "   2) log in as '$USERNAME', then run:  ~/post-install.sh"
+echo "   2) log in as '$NEWUSER', then run:  ~/post-install.sh"
 echo "      (installs paru + system76-power/dkms + firmware updates)"
 echo "   3) enable the desktop SMART-alert notifier (a root unit can't do this"
 echo "      for you):  systemctl --user enable --now smartd-alert-check.timer"

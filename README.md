@@ -97,10 +97,12 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
 2. Fetch this `arch-lemurpro/` directory (git clone, `curl`, or USB) so the three
    scripts sit together.
 3. **Review and edit the CONFIG block** at the top of `install.sh` — at minimum
-   `DISK`, `NEWHOST`, `USERNAME`, `TIMEZONE`. Or override via env:
+   `DISK`, `NEWHOST`, `NEWUSER`, `TIMEZONE`. Or override via env:
    ```bash
-   DISK=/dev/nvme0n1 USERNAME=chris TIMEZONE=America/Puerto_Rico ./install.sh
+   DISK=/dev/nvme0n1 NEWUSER=chris TIMEZONE=America/Puerto_Rico ./install.sh
    ```
+   (`NEWUSER`, not `USERNAME` — zsh, the archiso shell, reserves `USERNAME` as a
+   special parameter and the value silently arrives as `root`.)
 4. Run it, follow the passphrase/password prompts, then `umount -R /mnt && reboot`.
 5. Log in as your user and run `~/post-install.sh`.
 

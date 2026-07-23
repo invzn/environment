@@ -79,7 +79,7 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 |---|---|---|
 | Hostname | — | **lemur** |
 | Root account | enabled / locked | **enabled** — kept for emergency/`sulogin` rescue access, which matches the manual-recovery boot philosophy (decisions #2/#9) |
-| Primary user | — | **`USERNAME`** (default `user`) |
+| Primary user | — | **`NEWUSER`** (default `user`; named to dodge zsh's special `USERNAME` parameter on archiso) |
 | Groups | — | **wheel** |
 | Shell | — | **/bin/bash** |
 | Privilege escalation | sudo / doas | **sudo** (wheel) |
@@ -110,7 +110,7 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 | Status bar | — | **i3status** |
 | Screen lock | — | **i3lock** |
 | Launcher | — | **dmenu + rofi** |
-| Terminal | — | **alacritty** |
+| Terminal | — | **ghostty** (`$TERMINAL` set in `.xinitrc` so `i3-sensible-terminal` finds it) |
 | Display manager | none / ly / lightdm / sddm / gdm | **none — `startx`** (`exec i3`) |
 | Fonts | — | **ttf-dejavu, ttf-font-awesome** |
 | Browser | — | **firefox** |
@@ -146,7 +146,7 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 | Option | Choices | Selected |
 |---|---|---|
 | Tool | none / restic / borg / btrbk / rsync | **restic** |
-| Destination | local drive / cloud / NAS | **cloud-first — Backblaze B2** (private bucket, all prior versions kept; **no Object Lock** — see Retention) |
+| Destination | local drive / cloud / NAS | **cloud-first — Backblaze B2** (private bucket, all prior versions kept; **no Object Lock** — see Retention; accessed via the **S3-compatible endpoint** — restic's native `b2:` backend trips B2's API-version gate on newer accounts, restic #5741) |
 | Scope | /home+/etc / /home / full | **/home only** |
 | Encryption | — | **client-side AES-256** (B2 stores ciphertext only; strength = repo-password entropy — 8-word CSPRNG diceware, decision #8) |
 | Daily key rights | full / append-only | **append-only (no delete)** — a compromised host can't destroy offsite history; worst case is hiding files, recoverable while the bucket keeps prior versions (decision #4) |

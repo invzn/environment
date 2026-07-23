@@ -167,7 +167,7 @@ EOF
 pacman -S --noconfirm --needed \
   xorg-server xorg-xinit \
   i3-wm i3status i3lock dmenu rofi \
-  alacritty ttf-dejavu ttf-font-awesome \
+  ghostty ttf-dejavu ttf-font-awesome \
   network-manager-applet pavucontrol pipewire pipewire-pulse wireplumber \
   brightnessctl playerctl firefox
 
@@ -178,7 +178,9 @@ sed -i 's/^# %wheel ALL=(ALL:ALL) ALL$/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 # no sudo makes post-install.sh dead on arrival. Fail loudly instead.
 grep -q '^%wheel ALL=(ALL:ALL) ALL$' /etc/sudoers || { echo "ERROR: failed to enable %wheel in /etc/sudoers" >&2; exit 1; }
 
-echo 'exec i3' > "/home/$USERNAME/.xinitrc"
+# TERMINAL steers i3-sensible-terminal (Mod+Enter) to ghostty regardless of
+# whether i3's fallback list knows it.
+printf 'export TERMINAL=ghostty\nexec i3\n' > "/home/$USERNAME/.xinitrc"
 chown "$USERNAME:$USERNAME" "/home/$USERNAME/.xinitrc"
 
 # --- Swap: zram (decision #1) ---------------------------------------------
@@ -264,3 +266,9 @@ echo ">> Set the ROOT password:"
 until passwd; do echo ">> try again"; done
 echo ">> Set the password for '$USERNAME':"
 until passwd "$USERNAME"; do echo ">> try again"; done
+
+# A bootable system nobody can log into is the worst failure mode — assert both
+# accounts actually ended up with a password hash (caught a real bug once).
+for acct in root "$USERNAME"; do
+  grep -Eq "^${acct}:\\\$" /etc/shadow || { echo "ERROR: no password hash for '$acct' in /etc/shadow" >&2; exit 1; }
+done

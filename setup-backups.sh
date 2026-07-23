@@ -10,6 +10,12 @@
 # #8: 8-word diceware, generated with real randomness). The repo is deduplicated
 # + versioned and offsite by construction.
 #
+# restic talks to B2 over its S3-COMPATIBLE endpoint, not the native b2:
+# backend: restic's built-in B2 client authorizes via an API version that
+# newer B2 accounts reject (restic issue #5741, "not supported on API version
+# number 3"). The app key doubles as S3 credentials, and append-only holds —
+# without deleteFiles, S3 DeleteObject is refused just like the native delete.
+#
 # Ransomware resistance (decision #4): the credential stored ON this laptop is
 # an APPEND-ONLY B2 key — it can add data but NOT delete it, so a compromised
 # host cannot destroy the offsite history. (Worst case with a stolen append-only
@@ -51,7 +57,11 @@
 #     hidden locks disappear from restic's view. Do NOT widen this prefix.
 #   * the DAILY key: an application key scoped to the bucket WITHOUT the
 #     deleteFiles capability (read + write, no delete) -> keyID + key go on
-#     this machine (prompted below).
+#     this machine (prompted below). NOTE: the web console can't drop a single
+#     capability — create this key with the b2 CLI:
+#       b2 key create --bucket <bucket> lemur-daily-append \
+#         listBuckets,listFiles,readFiles,writeFiles
+#     (prints "<keyID> <applicationKey>" — the two values prompted below)
 #   * the MAINTENANCE key: a second application key WITH full rights to the
 #     bucket. Store it ONLY in your password manager; you'll paste it when
 #     running `sudo restic-maintenance` (~quarterly).
@@ -91,7 +101,29 @@ read -rp  "B2 application key ID (append-only DAILY key): " KEYID
 read -rsp "B2 application key: " APPKEY; echo
 [ -n "$APPKEY" ] || die "application key required"
 
-REPO_PATH="$(hostname)/home"     # object-name prefix inside the bucket
+# --- Fail fast: verify the key with B2 before prompting for anything else ---
+echo ">> Verifying the key with B2"
+# v4: older API versions reject keys carrying modern capabilities ("not
+# supported on API version N") — v4 can represent any key.
+auth="$(curl -s --fail-with-body -u "$KEYID:$APPKEY" \
+  https://api.backblazeb2.com/b2api/v4/b2_authorize_account)" \
+  || die "B2 rejected the key (401 = wrong keyID/key pair — recreate the key and paste both values from the same output): ${auth:-no response}"
+# A key WITH deleteFiles silently defeats the append-only design (decision #4)
+# — the web console's "Read & Write" preset includes it; only the CLI can omit it.
+if printf '%s' "$auth" | grep -q '"deleteFiles"'; then
+  echo "ERROR: this key has the deleteFiles capability — it is NOT append-only." >&2
+  die "create it with:  b2 key create --bucket $BUCKET <name> listBuckets,listFiles,readFiles,writeFiles"
+fi
+printf '%s' "$auth" | grep -Eq '"bucketName"[[:space:]]*:[[:space:]]*"'"$BUCKET"'"' \
+  || echo "WARNING: key does not appear scoped to bucket '$BUCKET' — double-check before relying on it." >&2
+# The account's S3-compatible endpoint (region-specific) ships in the same
+# authorize response — derive it instead of asking.
+S3URL="$(printf '%s' "$auth" | grep -o '"s3ApiUrl": *"[^"]*"' | grep -o 'https[^"]*')"
+[ -n "$S3URL" ] || die "could not extract s3ApiUrl from the B2 authorize response"
+echo ">>   key OK — S3 endpoint: $S3URL"
+
+REPO_PATH="$(cat /etc/hostname)/home"   # object-name prefix inside the bucket
+                                        # (not `hostname` — that binary is in inetutils, absent from `base`)
 
 cat <<'NOTE'
 
@@ -115,9 +147,9 @@ printf '%s' "$RPW" > /etc/restic/password
 chmod 600 /etc/restic/password
 
 cat > /etc/restic/b2.env <<EOF
-B2_ACCOUNT_ID=$KEYID
-B2_ACCOUNT_KEY=$APPKEY
-RESTIC_REPOSITORY=b2:$BUCKET:$REPO_PATH
+AWS_ACCESS_KEY_ID=$KEYID
+AWS_SECRET_ACCESS_KEY=$APPKEY
+RESTIC_REPOSITORY=s3:$S3URL/$BUCKET/$REPO_PATH
 RESTIC_PASSWORD_FILE=/etc/restic/password
 EOF
 chmod 600 /etc/restic/b2.env
@@ -194,11 +226,11 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "run as root:  sudo restic-maintenance" >&2; exit 1; }
 set -a; . /etc/restic/b2.env; set +a
 echo "Paste the full-rights MAINTENANCE key from your password manager."
-read -rp  "B2 maintenance key ID: " B2_ACCOUNT_ID
-[ -n "$B2_ACCOUNT_ID" ] || exit 1
-read -rsp "B2 maintenance key: " B2_ACCOUNT_KEY; echo
-[ -n "$B2_ACCOUNT_KEY" ] || exit 1
-export B2_ACCOUNT_ID B2_ACCOUNT_KEY
+read -rp  "B2 maintenance key ID: " AWS_ACCESS_KEY_ID
+[ -n "$AWS_ACCESS_KEY_ID" ] || exit 1
+read -rsp "B2 maintenance key: " AWS_SECRET_ACCESS_KEY; echo
+[ -n "$AWS_SECRET_ACCESS_KEY" ] || exit 1
+export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 restic unlock
 restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 restic check
