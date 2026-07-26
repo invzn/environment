@@ -36,7 +36,8 @@ export EDITOR="nvim"
 # git autocompletion for bash
 source $HOME/.bash/git_completion.sh
 
-alias tmx="sesh connect \$(sesh list | fzf)"
+# tmx: session switcher + git worktree management
+source $HOME/.bash/tmx.sh
 
 # Set PATH, MANPATH, etc., for Homebrew.
 eval "$(/opt/homebrew/bin/brew shellenv)"
