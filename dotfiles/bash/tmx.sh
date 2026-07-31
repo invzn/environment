@@ -1,46 +1,28 @@
 # tmx: sesh/fzf session switcher with git worktree management.
 #
 # Usage:
-#   tmx                 fuzzy-pick a session, directory, or worktree and connect;
-#                       ctrl-n on a highlighted entry creates a worktree in that
-#                       repo (prompts for the branch name) and connects to it
+#   tmx                 two-stage picker. Stage one: the git repos among sesh's
+#                       sessions and directories, deduped to their main
+#                       checkout (non-repo entries are filtered out). Stage
+#                       two: the chosen repo's worktrees -- enter opens the
+#                       highlighted one, typing a new branch name and pressing
+#                       enter creates a worktree for it, esc returns to stage
+#                       one.
 #   tmx new <branch> [base]
 #                       create a worktree for <branch> in the current repo
 #                       (branching from [base] if <branch> doesn't exist) and
 #                       connect to a session rooted there
-#   tmx ls              list tmx-managed worktrees and their branches
-#   tmx rm              fuzzy-pick a worktree, remove it, and kill its session
+#   tmx ls              list the current repo's worktrees
+#   tmx rm              pick a repo, then one of its worktrees to remove;
+#                       kills the worktree's tmux session too
 #
 # Worktrees live inside each repo at <repo>/.worktrees/<branch> (slashes in
-# branch names become dashes). Since they're scattered across repos, created
-# worktrees are recorded in $TMX_REGISTRY so the picker/ls/rm can list them;
-# stale entries are filtered out on read. `.worktrees/` is auto-added to each
-# repo's .git/info/exclude so it never shows up as untracked.
+# branch names become dashes). `.worktrees/` is auto-added to each repo's
+# .git/info/exclude so it never shows up as untracked. Listings come straight
+# from `git worktree list`, so worktrees created outside tmx show up too.
 #
 # Caveat: sesh names sessions after the directory basename, so worktrees for
 # the same branch name in two different repos share one tmux session name.
-
-TMX_REGISTRY="${TMX_REGISTRY:-${XDG_STATE_HOME:-$HOME/.local/state}/tmx/worktrees}"
-
-_tmx_worktrees () {
-  [ -f "$TMX_REGISTRY" ] || return 0
-  local wt
-  while IFS= read -r wt; do
-    [ -d "$wt" ] && printf '%s\n' "$wt"
-  done < "$TMX_REGISTRY"
-  return 0
-}
-
-_tmx_register () {
-  mkdir -p "$(dirname "$TMX_REGISTRY")"
-  grep -qxF "$1" "$TMX_REGISTRY" 2>/dev/null || echo "$1" >> "$TMX_REGISTRY"
-}
-
-_tmx_unregister () {
-  [ -f "$TMX_REGISTRY" ] || return 0
-  grep -vxF "$1" "$TMX_REGISTRY" > "$TMX_REGISTRY.tmp"
-  mv "$TMX_REGISTRY.tmp" "$TMX_REGISTRY"
-}
 
 # Resolve a picker selection (a ~/path or a tmux session name) to a directory.
 _tmx_resolve_dir () {
@@ -61,6 +43,31 @@ _tmx_resolve_dir () {
   return 1
 }
 
+# The git repos among sesh's sessions and directories, deduped to their main
+# checkout root (linked worktrees collapse into their repo), ~-abbreviated.
+_tmx_repos () {
+  local sel dir root
+  sesh list | awk '!seen[$0]++' | while IFS= read -r sel; do
+    dir="$(_tmx_resolve_dir "$sel" 2>/dev/null)" || continue
+    root="$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || continue
+    echo "${root%/.git}"
+  done | awk '!seen[$0]++' | sed "s|^$HOME|~|"
+}
+
+# List <root>'s worktrees as "<name>\t<path>" lines; the main checkout is
+# named "main", linked worktrees go by their directory basename.
+_tmx_repo_worktrees () {
+  local root="$1" wt
+  git -C "$root" worktree list --porcelain | awk '/^worktree /{print substr($0,10)}' | \
+  while IFS= read -r wt; do
+    if [ "$wt" = "$root" ]; then
+      printf 'main\t%s\n' "$wt"
+    else
+      printf '%s\t%s\n' "$(basename "$wt")" "$wt"
+    fi
+  done
+}
+
 # Create (if needed) a worktree for <branch> in the repo containing <dir>,
 # then connect. New branches base off <dir>'s HEAD unless [base] is given.
 _tmx_new () {
@@ -79,62 +86,59 @@ _tmx_new () {
     else
       git -C "$dir" worktree add -b "$branch" "$wt" ${base:+"$base"} || return 1
     fi
-    _tmx_register "$wt"
     zoxide add "$wt"
   fi
   sesh connect "$wt"
 }
 
-_tmx_pick () {
-  local out query key sel dir branch
-  out="$({ sesh list; _tmx_worktrees | sed "s|^$HOME|~|"; } | awk '!seen[$0]++' | \
-    fzf --print-query --expect=ctrl-n \
-        --header 'enter: connect | ctrl-n: new worktree in highlighted repo')" || return
-  query="$(sed -n 1p <<< "$out")"
-  key="$(sed -n 2p <<< "$out")"
-  sel="$(sed -n 3p <<< "$out")"
-  if [ "$key" = "ctrl-n" ]; then
-    if [ -n "$sel" ]; then
-      dir="$(_tmx_resolve_dir "$sel")" || return 1
-    else
-      dir="$PWD"
-    fi
-    branch="$(fzf --prompt 'new worktree branch: ' --query "$query" \
-                  --bind 'enter:print-query' --no-info \
-                  --header "repo: $dir" < /dev/null)"
-    [ -n "$branch" ] || return 0
-    _tmx_new "$dir" "$branch"
-  else
-    [ -n "$sel" ] && sesh connect "$sel"
-  fi
+# Stage two: open one of <root>'s worktrees, or create one by typing a new
+# branch name. Returns 1 on cancel so the caller can reopen stage one.
+_tmx_pick_worktree () {
+  local root="$1" out tab=$'\t'
+  out="$(_tmx_repo_worktrees "$root" | \
+    fzf --delimiter "$tab" --with-nth 1 \
+        --bind 'enter:accept-or-print-query' \
+        --header "$(basename "$root") worktrees | enter: open, or type a new branch name to create")" || return 1
+  [ -n "$out" ] || return 1
+  case "$out" in
+    *"$tab"*) sesh connect "${out#*"$tab"}" ;;
+    *)        _tmx_new "$root" "$out" ;;
+  esac
 }
 
-_tmx_ls () {
-  local wt
-  _tmx_worktrees | while read -r wt; do
-    printf '%s  [%s]\n' "$wt" "$(git -C "$wt" branch --show-current 2>/dev/null)"
+_tmx_pick () {
+  local repo root
+  while true; do
+    repo="$(_tmx_repos | fzf --header 'pick a repo')" || return 0
+    [ -n "$repo" ] || return 0
+    root="$(_tmx_resolve_dir "$repo")" || return 1
+    _tmx_pick_worktree "$root" && return 0
   done
 }
 
-_tmx_rm () {
-  local wt main_repo
-  wt="$(_tmx_worktrees | fzf)" || return
-  [ -n "$wt" ] || return
-  main_repo="$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
-  main_repo="${main_repo%/.git}"
-  if [ -n "$main_repo" ]; then
-    git -C "$main_repo" worktree remove "$wt" || {
-      echo "tmx rm: worktree is dirty; to discard its changes run:" >&2
-      echo "  git -C $main_repo worktree remove --force $wt" >&2
-      return 1
-    }
-  else
-    echo "tmx rm: $wt is not a git worktree; not touching it" >&2
+_tmx_ls () {
+  git worktree list || {
+    echo "tmx ls: not inside a git repository" >&2
     return 1
-  fi
+  }
+}
+
+_tmx_rm () {
+  local repo root wt tab=$'\t'
+  repo="$(_tmx_repos | fzf --header 'pick the repo to remove a worktree from')" || return 0
+  [ -n "$repo" ] || return 0
+  root="$(_tmx_resolve_dir "$repo")" || return 1
+  wt="$(_tmx_repo_worktrees "$root" | grep -v "^main$tab" | \
+    fzf --delimiter "$tab" --with-nth 1 --header "remove a worktree of $(basename "$root")")" || return 0
+  [ -n "$wt" ] || return 0
+  wt="${wt#*"$tab"}"
+  git -C "$root" worktree remove "$wt" || {
+    echo "tmx rm: worktree is dirty; to discard its changes run:" >&2
+    echo "  git -C $root worktree remove --force $wt" >&2
+    return 1
+  }
   tmux kill-session -t "=$(basename "$wt")" 2>/dev/null
   zoxide remove "$wt" 2>/dev/null
-  _tmx_unregister "$wt"
   return 0
 }
 
