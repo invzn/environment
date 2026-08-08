@@ -126,7 +126,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - `///` doc comments on all public items; first line is a one-sentence summary in the third person ("Returns...", "Creates...") 🔧 (`rustc: missing_docs`, opt-in via `#![warn(missing_docs)]` on libraries)
 - Standard sections in order, when applicable: `# Examples`, `# Errors` (when returning `Result`), `# Panics` (any reachable panic), `# Safety` (unsafe fns) — 🔧 (`missing_errors_doc`, `missing_panics_doc`, *pedantic*; `missing_safety_doc`, default)
 - Doc examples are compiled and run as tests — keep them minimal, use `?` in examples via the hidden `# fn main() -> Result<...>` pattern, hide setup lines with `#`
-- Use intra-doc links: `[`Client`]`, `[`Self::send`]` — they're checked at doc build
+- Use intra-doc links: `` [`Client`] ``, `` [`Self::send`] `` — they're checked at doc build
 - Crate-level docs in `lib.rs` with `//!` — what the crate does, a quickstart example
 - Avoid comments that restate the code; comment *why*, not *what*
 
@@ -173,7 +173,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   `build()` returns `Result` if validation can fail; the builder holds `Option`s/defaults internally
 - Newtype pattern for domain values: `struct UserId(u64);` — prevents argument transposition, carries invariants, costs nothing at runtime. Derive what the type semantically supports (`Clone, Copy, Debug, PartialEq, Eq, Hash`), no more.
 - Typestate for protocol-like APIs where operations are only valid in certain states (`Request<Building>` → `Request<Ready>`) — use sparingly; it multiplies types
-- Derive liberally on public types: `Debug` always (🔧 `missing_debug_implementations`, rustc, opt-in); `Clone`, `PartialEq` when semantically valid; `Copy` only for small (≤ ~2 words) value types whose copies are semantically free
+- 🔧 Derive `Debug` on public types by default (`rustc: missing_debug_implementations`, opt-in) — **except** types holding secrets, credentials, or tokens: derived `Debug` prints them verbatim into logs and panic messages, so implement `Debug` manually with redaction (`write!(f, "Credentials {{ user: {}, password: [REDACTED] }}", self.user)`). `Clone`, `PartialEq` when semantically valid; `Copy` only for small (≤ ~2 words) value types whose copies are semantically free.
 - `#[must_use]` on functions whose return value is the entire point (builders, pure computations) and on guard-like types 🔧 (`must_use_candidate`, *pedantic*)
 - `#[non_exhaustive]` on public enums and structs that will grow; forces downstream `match` to include `_`
 - Do not implement `Deref` to emulate inheritance — `Deref` is for smart pointers only
@@ -196,9 +196,11 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Return-position `impl Trait` (RPIT) for returning closures and iterators; note Edition 2024 captures all in-scope lifetimes by default (use `+ use<>` syntax to opt out)
 - `where` clauses when bounds don't fit inline; put the bound where it's needed (on the method, not the struct, unless the struct's invariants require it)
 - Dyn compatibility (object safety): no generic methods, no `Self: Sized` returns, no `self`-by-value without `Sized` — design traits you intend to box accordingly; split a trait into a dyn-compatible core plus generic extension methods if needed
-- `async fn` in traits (1.75+) works for generics but such traits are not dyn-compatible — if you need `Box<dyn Service>`, desugar to `fn(&self) -> Pin<Box<dyn Future + Send + '_>>` manually or keep the trait generic-only
+- `async fn` in traits (1.75+) works for generics but such traits are not dyn-compatible — if you need `Box<dyn Service>`, desugar to `fn(&self) -> Pin<Box<dyn Future<Output = T> + Send + '_>>` manually or keep the trait generic-only
 - Avoid trait hierarchies more than two levels deep; prefer composition of small traits
 - Blanket impls (`impl<T: Foo> Bar for T`) are powerful and irrevocable in semver terms — add them deliberately
+- Orphan rule (coherence): a trait impl is legal only if your crate defines the trait or the type. To implement a foreign trait for a foreign type, wrap the type in a newtype (see API Design Patterns) — that is the standard workaround.
+- Trait objects carry an implicit lifetime bound — `Box<dyn Trait>` means `Box<dyn Trait + 'static>` and cannot hold borrowed data. When a trait object borrows, name the bound explicitly: `Box<dyn Handler + 'a>` (or `+ '_`).
 
 ## Lifetimes
 
@@ -226,7 +228,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Iterator adapters compile to the same code as hand-written loops — chains are not a performance cost; an intermediate `.collect::<Vec<_>>()` is 🔧 (`needless_collect`, *nursery*)
 - Collect a `Vec<Result<T, E>>` into `Result<Vec<T>, E>` directly: `items.iter().map(parse).collect::<Result<Vec<_>, _>>()?` — stops at first error
 - `iter()` borrows, `into_iter()` consumes, `iter_mut()` mutates in place — a `for x in collection` loop calls `into_iter()` and consumes; loop over `&collection` to borrow
-- 🔧 Use the entry API for insert-or-update: `map.entry(key).or_insert(0) += 1` — one lookup, not two (`map_entry`)
+- 🔧 Use the entry API for insert-or-update: `*map.entry(key).or_insert(0) += 1` — one lookup, not two (`map_entry`)
 - `Vec::with_capacity(n)` / `HashMap::with_capacity(n)` when size is known; `String` building in loops: `push_str`/`write!`, never `s = s + part` or repeated `format!` 🔧 (`string_add`, *restriction*; `format_collect`, *pedantic*)
 - In-place: `retain` over filter-and-reassign, `drain` to move elements out, `swap_remove` when order doesn't matter (O(1))
 - `sort_unstable` by default — faster, no allocation; `sort` only when equal-element order matters 🔧 (`stable_sort_primitive`, *pedantic*)
@@ -260,7 +262,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Cancellation safety: a future dropped at an `.await` point simply stops. In `select!`, the non-chosen branches are *dropped* — if a branch was mid-read on a buffered stream, data is lost. Only use cancellation-safe operations in `select!` arms (the tokio docs mark them); otherwise restructure with message passing.
 - Graceful shutdown pattern: listen on `tokio::signal::ctrl_c()`, broadcast shutdown via a `watch` channel, give tasks a deadline (`tokio::time::timeout`) to drain, then abort stragglers via `JoinSet::abort_all`
 - Blocking work on the runtime starves all tasks on that worker: CPU-bound or blocking-IO work goes in `tokio::task::spawn_blocking`; async code must not call blocking std IO, `std::thread::sleep`, or busy loops without `yield_now`
-- Mutex choice: `std::sync::Mutex` for short critical sections that never hold the guard across `.await` (it's faster); `tokio::sync::Mutex` only when the guard must live across an `.await` — 🔧 (`await_holding_lock`, *pedantic*, catches std guards held across await)
+- Mutex choice: `std::sync::Mutex` for short critical sections that never hold the guard across `.await` (it's faster); `tokio::sync::Mutex` only when the guard must live across an `.await` — 🔧 (`await_holding_lock`, *suspicious*, catches std guards held across await)
 - Channels: `mpsc::channel(n)` bounded by default — backpressure is a feature; `unbounded_channel` needs a stated justification (as with Go's buffered channels). `oneshot` for single request/reply, `watch` for latest-value state, `broadcast` for fan-out.
 - There is no async `Drop`: types owning async resources need an explicit `async fn shutdown(self)` — document that dropping without calling it leaks or blocks
 - Don't sprinkle `#[tokio::main]` beyond `main` — libraries take a runtime as given (functions are just `async fn`); binaries own the runtime
@@ -293,7 +295,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 - Reach for macros last: function → generic function → trait → declarative macro → proc macro, in that order of escalation
 - `macro_rules!` is appropriate for: repetitive trait impls over tuples/primitives, internal test-case generation, small DSL surfaces (like `vec!`). Keep patterns few and simple.
-- Macros must not hide control flow that affects the caller — a macro that `return`s or `?`s invisibly makes call sites lie 🔧 (partially, `macro_metavars_in_unsafe`, default)
+- Macros must not hide control flow that affects the caller — a macro that `return`s or `?`s invisibly makes call sites lie
 - Scope: prefer `pub(crate) use` over `#[macro_export]` for internal macros; `#[macro_export]` is crate-root-public and semver-relevant
 - Use `$crate::` paths inside exported macros so they resolve at any call site
 - Proc macros cost a separate crate, compile time, and IDE opacity — justified for derive-style ergonomics used many times (`#[derive(Builder)]`), not for one-off code generation; document exactly what code they emit
