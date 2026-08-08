@@ -1,6 +1,6 @@
 # Rust Style Guide
 
-Standards derived from the Rust API Guidelines, Effective Rust (David Drysdale), Rust for Rustaceans (Jon Gjengset), Rust Design Patterns (rust-unofficial), the Rustonomicon, and the std/Tokio API documentation. All Rust agents must follow these conventions.
+All Rust agents must follow these conventions.
 
 This guide assumes Edition 2024 (Rust 1.85+). Version-specific behavior is noted where relevant.
 
@@ -17,7 +17,7 @@ These rules govern how a Rust agent applies the rest of this guide. They take pr
 - Apply rules at the boundaries this guide names. A rule about public APIs applies to `pub` items, not to private helpers. Do not extrapolate a rule to adjacent constructs because they "feel similar."
 - The 🔧 marker means a lint exists for the rule — it does not relieve you of following the rule. Write code that already conforms; do not rely on CI to fix your output. Lints marked *(pedantic)*, *(nursery)*, or *(restriction)* are not on by default; the rule still applies.
 - When two rules conflict on a specific case, prefer the rule that is more local (function-level over crate-level), more specific (named construct over general principle), and explicitly marked as overriding.
-- Never add `#[allow(...)]` to silence a lint without a comment justifying it.
+- Prefer `#[expect(...)]` (1.81+) over `#[allow(...)]` to suppress a lint — it warns when the suppression stops being necessary, so it cannot go stale. Either way, never suppress a lint without a comment justifying it.
 
 ## Recommended Toolchain
 
@@ -55,7 +55,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Iterator methods: `iter()` → `&T`, `iter_mut()` → `&mut T`, `into_iter()` → `T`; a method returning an iterator names the iterator type after itself (C-ITER-TY)
 - Predicates: `is_`/`has_` prefix returning `bool`
 - 🔧 Constructors: `new` for the primary constructor (no arguments or the obvious ones); `with_x`/`from_x` for alternates; implement `Default` when a no-argument `new` exists (`new_without_default`)
-- 🔧 Don't stutter with the module path: `process::spawn`, not `process::spawn_process` — items are referenced through their module (`module_name_repetitions`, *pedantic*)
+- 🔧 Don't stutter with the module path: `process::spawn`, not `process::spawn_process` — items are referenced through their module (`module_name_repetitions`, *restriction*)
 - Type parameters: single uppercase letters — `T` general, `K`/`V` key/value, `E` error; use descriptive names (`Backend`, `Codec`) when several parameters coexist
 - Lifetimes: short (`'a`, `'b`) by default; descriptive (`'src`, `'conn`) when multiple lifetimes interact
 - Crate names: `kebab-case` on crates.io, referenced as `snake_case` in code; avoid `rust-`/`-rs` prefixes/suffixes
@@ -73,8 +73,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 - `Result<T, E>` for recoverable errors; `panic!` only for bugs (violated invariants, impossible states). A library that panics on bad input is broken — return `Err`.
 - Propagate with `?`. Do not `match` on a `Result` just to return the error unchanged.
-- 🔧 Never `unwrap()`/`expect()` in library code (`unwrap_used`, `expect_used`, *restriction*). In binaries, `expect` is acceptable at startup (config loading, arg parsing) where dying with a message is the correct behavior.
-- When an invariant makes failure impossible, use `expect` with a message stating *why it cannot fail*, in the "should" style: `.expect("regex is validated at compile time")`, not `.expect("failed to compile regex")`
+- 🔧 Never `unwrap()`/`expect()` in library code, with one exception: when an invariant makes failure impossible, `expect` is allowed — with a message stating *why it cannot fail*, in the "should" style: `.expect("regex is validated at compile time")`, not `.expect("failed to compile regex")` (`unwrap_used`, `expect_used`, *restriction*). In binaries, `expect` is also acceptable at startup (config loading, arg parsing) where dying with a message is the correct behavior.
 - Custom error types, crate-neutral pattern — an enum per fallible subsystem:
   ```rust
   #[derive(Debug)]
@@ -135,6 +134,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Panic policy: `unreachable!()` for logically impossible branches, `debug_assert!` for internal invariants checked in debug only, `assert!` for cheap invariants worth keeping in release. Document every reachable panic in a `# Panics` doc section.
 - Never let a panic cross an FFI boundary — panicking out of an `extern "C"` fn aborts. Use `std::panic::catch_unwind` at FFI and thread boundaries only; never for control flow.
 - 🔧 Prefer `.get(i)` returning `Option` over indexing `[i]` in library code where out-of-bounds is reachable from caller input (`indexing_slicing`, *restriction*)
+
 ## Numeric Types
 
 - 🔧 Integer arithmetic: debug builds panic on overflow, release builds wrap silently. For arithmetic on untrusted or unbounded input, choose explicitly: `checked_add`, `saturating_add`, or `wrapping_add` (`arithmetic_side_effects`, *restriction*)
@@ -214,7 +214,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - 🔧 `#[must_use]` on functions whose return value is the entire point (builders, pure computations) and on guard-like types (`must_use_candidate`, *pedantic*)
 - `#[non_exhaustive]` on public enums and structs that will grow; forces downstream `match` to include `_`
 - Do not implement `Deref` to emulate inheritance — `Deref` is for smart pointers only
-- Implement std traits rather than inventing methods: `Display` (never implement `ToString` directly — it's blanket-derived from `Display`), `FromStr`, `From`/`TryFrom` for conversions, `IntoIterator` for collection-likes, `Default` for zero-config construction
+- Implement std traits rather than inventing methods: `Display` (never implement `ToString` directly — a blanket impl provides it for every `Display` type), `FromStr`, `From`/`TryFrom` for conversions, `IntoIterator` for collection-likes, `Default` for zero-config construction
 - Implement `From`, bound on `Into`: provide `impl From<A> for B`; generic functions take `impl Into<B>`
 - Sealed trait pattern when downstream impls would break your evolution:
   ```rust
@@ -262,7 +262,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 # Collections and Iterators
 
 - 🔧 Prefer iterator chains over index loops (`needless_range_loop`); prefer `for` loops over `.for_each()` except at the end of long chains
-- 🔧 In release builds, statically dispatched iterator chains compile to the same code as hand-written loops. That does not hold in debug builds or across `Box<dyn Iterator>`/`Box<dyn Fn>` boundaries, where dynamic dispatch defeats inlining. An intermediate `.collect::<Vec<_>>()` is (`needless_collect`, *nursery*)
+- 🔧 In release builds, statically dispatched iterator chains compile to the same code as hand-written loops. That does not hold in debug builds or across `Box<dyn Iterator>`/`Box<dyn Fn>` boundaries, where dynamic dispatch defeats inlining. An intermediate `.collect::<Vec<_>>()` mid-chain forces an allocation and defeats laziness — keep the chain lazy until the final consumer (`needless_collect`, *nursery*)
 - Collect a `Vec<Result<T, E>>` into `Result<Vec<T>, E>` directly: `items.iter().map(parse).collect::<Result<Vec<_>, _>>()?` — stops at first error
 - `iter()` borrows, `into_iter()` consumes, `iter_mut()` mutates in place — a `for x in collection` loop calls `into_iter()` and consumes; loop over `&collection` to borrow
 - 🔧 Use the entry API for insert-or-update: `*map.entry(key).or_insert(0) += 1` — one lookup, not two (`map_entry`)
@@ -303,9 +303,13 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   ```rust
   // ❌ read_line is not cancellation-safe — a tick can drop it mid-read, losing buffered data
   loop {
+      buf.clear();
       tokio::select! {
           _ = interval.tick() => flush_stats(),
-          n = reader.read_line(&mut buf) => process(&buf[..n?]),
+          Ok(n) = reader.read_line(&mut buf) => {
+              if n == 0 { break; }
+              process(&buf);
+          }
       }
   }
 
@@ -334,6 +338,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 - Blocking work on the runtime starves all tasks on that worker: CPU-bound or blocking-IO work goes in `tokio::task::spawn_blocking`; async code must not call blocking std IO, `std::thread::sleep`, or busy loops without `yield_now`. The blocking pool is bounded (512 threads by default) and each call dispatches to another OS thread — batch small blocking calls rather than issuing thousands.
 - 🔧 Mutex choice: `std::sync::Mutex` for short critical sections that never hold the guard across `.await` (it's faster, and a std guard held across `.await` either fails `tokio::spawn`'s `Send` bound or stalls every task on that worker thread); `tokio::sync::Mutex` only when the guard must live across an `.await` (`await_holding_lock`, *suspicious*, catches std guards held across await)
+
 ### Channels
 
 - Channels: `mpsc::channel(n)` bounded by default — backpressure is a feature; `unbounded_channel` needs a stated justification (as with Go's buffered channels). `oneshot` for single request/reply, `watch` for latest-value state, `broadcast` for fan-out.
@@ -388,7 +393,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - `assert_eq!`/`assert_ne!` over bare `assert!(a == b)` — they print both values on failure; add context args for non-obvious asserts: `assert_eq!(got, want, "case: {name}")`
 - Tests return `Result`: `fn parses() -> Result<(), ParseError>` lets tests use `?` instead of unwrap ladders
 - `#[should_panic(expected = "substring")]` always with `expected` — a bare `should_panic` passes on *any* panic, including the bug you're not testing
-- `unwrap`/`expect` are fine in test code — a panic is a test failure; the *restriction* lints above do not apply under `#[cfg(test)]`
+- `unwrap`/`expect` are fine in test code — a panic is a test failure. Note `unwrap_used`/`expect_used` still fire under `#[cfg(test)]` by default; crates opting into those lints set `allow-unwrap-in-tests = true` (and `allow-expect-in-tests`) in `clippy.toml`.
 - Async tests: `#[tokio::test]`; use `tokio::time::pause()` + `advance()` to test timeouts without real waiting — never `sleep` your way to determinism
 - Never use real sleeps to wait for concurrent work in tests — await the handle, use channels, or paused time
 - Shared state across tests: tests run in parallel by default — tests touching process-globals (env vars, cwd, ports) must be isolated or serialized; prefer injecting the dependency
