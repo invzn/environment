@@ -43,14 +43,80 @@ _tmx_resolve_dir () {
   return 1
 }
 
+# Resolve picker selection $1 to a directory using the pre-fetched tmux
+# session list in $_tmx_tmux_sessions ("name<TAB>path" lines, one snapshot
+# per _tmx_repos call). Sets $_tmx_dir on success; no forks either way.
+_tmx_resolve_from_sessions () {
+  local sel="$1" lname lpath
+  case "$sel" in
+    "~"*) sel="$HOME${sel#\~}" ;;
+  esac
+  if [ -d "$sel" ]; then
+    _tmx_dir="$sel"
+    return 0
+  fi
+  while IFS=$'\t' read -r lname lpath; do
+    if [ "$lname" = "$1" ] && [ -d "$lpath" ]; then
+      _tmx_dir="$lpath"
+      return 0
+    fi
+  done <<<"$_tmx_tmux_sessions"
+  return 1
+}
+
+# Find the main checkout root that owns directory $1 by walking upward
+# through the filesystem, without forking. Sets $_tmx_root on success;
+# returns 1 if $1 isn't inside a git repo (walked all the way to "/").
+# The only case that forks is a linked worktree whose recorded gitdir is a
+# relative path -- rare in practice (git records absolute gitdir paths) --
+# where one `cd`+`pwd -P` subshell normalizes it.
+_tmx_repo_root () {
+  local cur="$1" parent line gitdir name reldir relfile
+  case "$cur" in
+    /*) ;;
+    *) cur="$PWD/$cur" ;;
+  esac
+  [ "$cur" != "/" ] && cur="${cur%/}"
+  while true; do
+    if [ -d "$cur/.git" ]; then
+      _tmx_root="$cur"
+      return 0
+    fi
+    if [ -f "$cur/.git" ]; then
+      IFS= read -r line < "$cur/.git" || return 1
+      gitdir="${line#gitdir: }"
+      case "$gitdir" in
+        /*) ;;
+        */*) reldir="${gitdir%/*}"; relfile="${gitdir##*/}"
+             gitdir="$(cd "$cur/$reldir" 2>/dev/null && pwd -P)/$relfile" ;;
+        *)   gitdir="$(cd "$cur" 2>/dev/null && pwd -P)/$gitdir" ;;
+      esac
+      case "$gitdir" in
+        */worktrees/*)
+          name="${gitdir##*/worktrees/}"
+          _tmx_root="${gitdir%/worktrees/"$name"}"
+          _tmx_root="${_tmx_root%/.git}"
+          return 0
+          ;;
+        *) return 1 ;;
+      esac
+    fi
+    [ "$cur" = "/" ] && return 1
+    parent="${cur%/*}"
+    [ -z "$parent" ] && parent="/"
+    cur="$parent"
+  done
+}
+
 # The git repos among sesh's sessions and directories, deduped to their main
 # checkout root (linked worktrees collapse into their repo), ~-abbreviated.
 _tmx_repos () {
-  local sel dir root
+  local sel _tmx_tmux_sessions _tmx_dir _tmx_root
+  _tmx_tmux_sessions="$(tmux list-sessions -F '#{session_name}	#{session_path}' 2>/dev/null)"
   sesh list | awk '!seen[$0]++' | while IFS= read -r sel; do
-    dir="$(_tmx_resolve_dir "$sel" 2>/dev/null)" || continue
-    root="$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || continue
-    echo "${root%/.git}"
+    _tmx_resolve_from_sessions "$sel" || continue
+    _tmx_repo_root "$_tmx_dir" || continue
+    echo "$_tmx_root"
   done | awk '!seen[$0]++' | sed "s|^$HOME|~|"
 }
 
