@@ -28,12 +28,13 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 
 **Implementation experts** (vertical-slice TDD — write tests *and* implementation, one behavior at a time):
 - `go-expert` — Go, follows the Go Style Guide (`references/go-styleguide.md`)
+- `rust-expert` — Rust, follows the Rust Style Guide (`references/rust-styleguide.md`)
 - `python-expert` — Python, follows the Google Python Style Guide
 - `language-expert` — any other language, idiomatic conventions
 
 **Reviewers:**
 - `reviewer` — general quality + security
-- `go-standards-reviewer` / `python-standards-reviewer` — style-guide conformance
+- `go-standards-reviewer` / `rust-standards-reviewer` / `python-standards-reviewer` — style-guide conformance
 - `architect-reviewer` — design, coupling, extensibility
 - `security-reviewer` — vulnerabilities, auth, injection, secrets
 - `performance-reviewer` — bottlenecks, scaling, leaks
@@ -75,6 +76,7 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 ## References
 
 - `go-styleguide.md` — Go conventions, read by `go-expert` and `go-standards-reviewer`
+- `rust-styleguide.md` — Rust conventions, read by `rust-expert` and `rust-standards-reviewer`
 
 ## How it composes
 
