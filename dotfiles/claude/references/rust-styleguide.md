@@ -194,7 +194,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   | Mutate behind `&self`, multi-threaded | `Mutex<T>` / `RwLock<T>` |
   | Counter/flag, multi-threaded | `AtomicUsize` / `AtomicBool` |
   | One-time lazy init | `OnceLock<T>` / `LazyLock<T>` |
-- `Rc<RefCell<T>>` appearing in a design is a smell — usually the ownership story hasn't been thought through; consider handles/indices into a central store, or restructure
+- `Rc<RefCell<T>>` appearing in a design is a smell — usually the ownership story hasn't been thought through; consider handles/indices into a central store, or restructure. Legitimate uses exist (graph structures with genuinely shared mutable nodes, single-threaded interpreter environments, GUI callback registries) — reach them by elimination, not by default.
 - `RefCell` panics on double-borrow at runtime — you are trading compile-time checking for a runtime crash; keep borrow scopes minimal and never hold a borrow across a callback
 - Global state: `static X: LazyLock<T>` (1.80+) for lazy statics; `OnceLock` when initialization needs runtime input. Avoid mutable globals; pass dependencies explicitly.
 
@@ -236,7 +236,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Dyn compatibility (object safety): no generic methods, no `Self: Sized` returns, no `self`-by-value without `Sized` — design traits you intend to box accordingly; split a trait into a dyn-compatible core plus generic extension methods if needed
 - `async fn` in traits (1.75+) works for generics but such traits are not dyn-compatible — if you need `Box<dyn Service>`, desugar to `fn(&self) -> Pin<Box<dyn Future<Output = T> + Send + '_>>` manually or keep the trait generic-only
 - Avoid trait hierarchies more than two levels deep; prefer composition of small traits
-- Blanket impls (`impl<T: Foo> Bar for T`) are powerful and irrevocable in semver terms — add them deliberately
+- Blanket impls (`impl<T: Foo> Bar for T`) are powerful and irrevocable in semver terms — add one only with a doc comment on the impl stating its intended scope and why a blanket (rather than per-type) impl is warranted
 - Orphan rule (coherence): a trait impl is legal only if your crate defines the trait or the type. To implement a foreign trait for a foreign type, wrap the type in a newtype (see API Design Patterns) — that is the standard workaround.
 - Trait objects carry an implicit lifetime bound — `Box<dyn Trait>` means `Box<dyn Trait + 'static>` and cannot hold borrowed data. When a trait object borrows, name the bound explicitly: `Box<dyn Handler + 'a>` (or `+ '_`).
 
@@ -288,8 +288,17 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 ## Tokio
 
+### Task lifecycle
+
 - `tokio::spawn` requires `'static + Send` — clone the `Arc`s you need before the `move` block; a spawn that borrows locals won't compile, and that's the design speaking
 - Never fire-and-forget: dropping a `JoinHandle` detaches the task and swallows its panics/errors. Hold handles and await them, or use `JoinSet` for dynamic groups (awaiting results as they finish — the errgroup equivalent).
+- Don't spawn a task per small item in a hot loop — every `spawn` allocates a task and pays scheduler overhead; batch items into fewer tasks, or process them within one task with an iterator/stream
+- `async fn` desugars to a state machine holding every local variable live across an `.await` — deeply nested unboxed async chains inflate the future's size. `Box::pin` a large future to move it to the heap once; recursive `async fn` requires it (the type would otherwise be infinitely sized).
+- `Pin` exists because a started future must not move (its state machine may be self-referential). You rarely write `Pin` directly: `Box::pin` for owned futures, `tokio::pin!` to pin on the stack when a `select!` loop polls the same future across iterations. `Pin<&mut Self>` semantics only matter when implementing `Future`/`Stream` by hand — most types are `Unpin` and exempt from the ceremony.
+- Don't sprinkle `#[tokio::main]` beyond `main` — libraries take a runtime as given (functions are just `async fn`); binaries own the runtime
+
+### Cancellation and shutdown
+
 - Cancellation safety: a future dropped at an `.await` point simply stops. In `select!`, the non-chosen branches are *dropped* — if a branch was mid-read on a buffered stream, data is lost. Only use cancellation-safe operations in `select!` arms (the tokio docs mark them); otherwise restructure with message passing.
   ```rust
   // ❌ read_line is not cancellation-safe — a tick can drop it mid-read, losing buffered data
@@ -319,14 +328,17 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   }
   ```
 - Graceful shutdown pattern: listen on `tokio::signal::ctrl_c()`, broadcast shutdown via a `watch` channel, give tasks a deadline (`tokio::time::timeout`) to drain, then abort stragglers via `JoinSet::abort_all`
+- There is no async `Drop`: types owning async resources need an explicit `async fn shutdown(self)` — document that dropping without calling it leaks or blocks
+
+### Blocking and locking
+
 - Blocking work on the runtime starves all tasks on that worker: CPU-bound or blocking-IO work goes in `tokio::task::spawn_blocking`; async code must not call blocking std IO, `std::thread::sleep`, or busy loops without `yield_now`. The blocking pool is bounded (512 threads by default) and each call dispatches to another OS thread — batch small blocking calls rather than issuing thousands.
 - 🔧 Mutex choice: `std::sync::Mutex` for short critical sections that never hold the guard across `.await` (it's faster, and a std guard held across `.await` either fails `tokio::spawn`'s `Send` bound or stalls every task on that worker thread); `tokio::sync::Mutex` only when the guard must live across an `.await` (`await_holding_lock`, *suspicious*, catches std guards held across await)
+### Channels
+
 - Channels: `mpsc::channel(n)` bounded by default — backpressure is a feature; `unbounded_channel` needs a stated justification (as with Go's buffered channels). `oneshot` for single request/reply, `watch` for latest-value state, `broadcast` for fan-out.
-- There is no async `Drop`: types owning async resources need an explicit `async fn shutdown(self)` — document that dropping without calling it leaks or blocks
-- Don't sprinkle `#[tokio::main]` beyond `main` — libraries take a runtime as given (functions are just `async fn`); binaries own the runtime
+- Size bounded channels from measured throughput, not folklore: too small parks senders constantly; too large defeats the backpressure signal and grows worst-case memory. Start small (tens) and raise only on evidence of sender contention.
 - Prefer passing data through channels over sharing `Arc<Mutex<T>>` state between tasks, when the data has a clear producer→consumer direction (same principle as Go's "share by communicating")
-- Don't spawn a task per small item in a hot loop — every `spawn` allocates a task and pays scheduler overhead; batch items into fewer tasks, or process them within one task with an iterator/stream
-- `async fn` desugars to a state machine holding every local variable live across an `.await` — deeply nested unboxed async chains inflate the future's size. `Box::pin` a large future to move it to the heap once; recursive `async fn` requires it (the type would otherwise be infinitely sized).
 
 ## Time
 
@@ -403,12 +415,12 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 ## Cargo
 
-- Set `edition = "2024"` and `rust-version` (MSRV) in `Cargo.toml`; CI should build against the stated MSRV
+- 🔧 Set `edition = "2024"` and `rust-version` (MSRV) in `Cargo.toml`; CI should build against the stated MSRV (`incompatible_msrv` flags std APIs newer than the declared `rust-version`)
 - Minimize dependencies — every crate is supply-chain surface, compile time, and maintenance (this guide's crate policy exists for a reason). Audit before adopting: maintenance activity, transitive tree size (`cargo tree`), license.
 - Specify dependency versions as `"1.2"` (semver-compatible range); avoid `"*"` and avoid `=` pins outside reproducibility-critical binaries. Commit `Cargo.lock` for binaries; for libraries it's optional (modern guidance: committing it is fine).
 - Features must be additive — enabling a feature never removes or changes API; never define mutually-exclusive features. Name them for what they add (`json`, `async`); keep `default` minimal but useful.
 - Gate optional dependencies behind features: `dep:name` syntax; `#[cfg(feature = "json")]` on the modules they enable
-- Workspaces for multi-crate repos: shared `[workspace.dependencies]` for version alignment, one `Cargo.lock` at the root
+- Workspaces for multi-crate repos: shared `[workspace.dependencies]` for version alignment, one `Cargo.lock` at the root; inherit shared fields from `[workspace.package]` with `version.workspace = true` / `edition.workspace = true` so member crates version together
 
 ## Modules and Layout
 
@@ -427,7 +439,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 - Measure first: `criterion` benchmarks, `perf`/`cargo flamegraph` profiles, on `--release`. Debug builds are 10-100x slower and optimize nothing — never draw performance conclusions from them.
 - The compiler reorders struct fields automatically (default `repr(Rust)`) — manual largest-to-smallest ordering is unnecessary (unlike Go); only `#[repr(C)]` layouts need hand care
-- 🔧 An enum is as large as its largest variant — box oversized variants: `Large(Box<BigStruct>)` (`large_enum_variant`)
+- 🔧 An enum is as large as its largest variant (plus a discriminant tag, rounded to alignment — niche optimization elides the tag for types like `Option<&T>`/`Option<Box<T>>`, which stay pointer-sized) — box oversized variants: `Large(Box<BigStruct>)` (`large_enum_variant`)
 - Allocation discipline in hot paths: `with_capacity`, reuse buffers (`clear()` + refill instead of new `Vec`), `write!` into an existing `String`, avoid `format!`/`to_string`/`clone` per iteration
 - 🔧 Pass small `Copy` types by value (`u64`, `Instant`); references to them cost indirection for nothing (`trivially_copy_pass_by_ref`, *pedantic*)
 - `Arc::clone` and drop are atomic read-modify-writes — cloning in a hot multi-core loop ping-pongs the refcount's cache line; clone once outside the loop and pass references inside
