@@ -3,7 +3,9 @@
 # Usage:
 #   tmx                 flat picker over every worktree of every git repo
 #                       among sesh's sessions and directories, shown as
-#                       "[repo] worktree" and ordered most recently used at
+#                       "[host/org/repo] worktree" (relative to
+#                       $_TMX_REPO_BASE, basename for repos elsewhere) and
+#                       ordered most recently used at
 #                       the bottom (recency = the worktree session's last
 #                       tmux attach; sessionless worktrees sort last). Enter
 #                       opens the highlighted worktree; ctrl-n creates a new
@@ -157,16 +159,29 @@ _tmx_new () {
   sesh connect "$wt"
 }
 
+# Repos checked out under this base are labeled by their path relative to
+# it (host/org/repo, e.g. "github.com/invzn/environment"); repos elsewhere
+# fall back to their directory basename.
+_TMX_REPO_BASE="$HOME/Development/remote"
+
+# Display label for the repo rooted at $1. Sets $_tmx_label; no forks.
+_tmx_repo_label () {
+  local root="$1"
+  _tmx_label="${root#"$_TMX_REPO_BASE"/}"
+  [ "$_tmx_label" = "$root" ] && _tmx_label="${root##*/}"
+}
+
 # Every worktree of every repo as "[repo] name\t<path>" lines, most
 # recently used first (recency = the last tmux attach of a session rooted
 # at the worktree; sessionless worktrees keep repo order at the end). With
 # fzf's default bottom-prompt layout that puts the most recent entries at
 # the bottom, next to the prompt.
 _tmx_worktrees_mru () {
-  local repo root name path t p mru sessions tab=$'\t'
+  local repo root name path t p mru sessions tab=$'\t' _tmx_label
   sessions="$(tmux list-sessions -F '#{session_last_attached}	#{session_path}' 2>/dev/null)"
   _tmx_repos | while IFS= read -r repo; do
     root="${repo/#\~/$HOME}"
+    _tmx_repo_label "$root"
     _tmx_repo_worktrees "$root" | while IFS=$'\t' read -r name path; do
       mru=0
       while IFS=$'\t' read -r t p; do
@@ -174,7 +189,7 @@ _tmx_worktrees_mru () {
           mru="$t"
         fi
       done <<<"$sessions"
-      printf '%s\t[%s] %s\t%s\n' "$mru" "${root##*/}" "$name" "$path"
+      printf '%s\t[%s] %s\t%s\n' "$mru" "$_tmx_label" "$name" "$path"
     done
   done | sort -s -t "$tab" -k1,1rn | cut -f2-
 }
