@@ -1,13 +1,15 @@
 # tmx: sesh/fzf session switcher with git worktree management.
 #
 # Usage:
-#   tmx                 two-stage picker. Stage one: the git repos among sesh's
-#                       sessions and directories, deduped to their main
-#                       checkout (non-repo entries are filtered out). Stage
-#                       two: the chosen repo's worktrees -- enter opens the
-#                       highlighted one, typing a new branch name and pressing
-#                       enter creates a worktree for it, esc returns to stage
-#                       one.
+#   tmx                 flat picker over every worktree of every git repo
+#                       among sesh's sessions and directories, shown as
+#                       "[host/org/repo] worktree" (relative to
+#                       $_TMX_REPO_BASE, basename for repos elsewhere) and
+#                       ordered most recently used at
+#                       the bottom (recency = the worktree session's last
+#                       tmux attach; sessionless worktrees sort last). Enter
+#                       opens the highlighted worktree; ctrl-n creates a new
+#                       one: pick a repo, then type the branch name.
 #   tmx new <branch> [base]
 #                       create a worktree for <branch> in the current repo
 #                       (branching from [base] if <branch> doesn't exist) and
@@ -43,14 +45,80 @@ _tmx_resolve_dir () {
   return 1
 }
 
+# Resolve picker selection $1 to a directory using the pre-fetched tmux
+# session list in $_tmx_tmux_sessions ("name<TAB>path" lines, one snapshot
+# per _tmx_repos call). Sets $_tmx_dir on success; no forks either way.
+_tmx_resolve_from_sessions () {
+  local sel="$1" lname lpath
+  case "$sel" in
+    "~"*) sel="$HOME${sel#\~}" ;;
+  esac
+  if [ -d "$sel" ]; then
+    _tmx_dir="$sel"
+    return 0
+  fi
+  while IFS=$'\t' read -r lname lpath; do
+    if [ "$lname" = "$1" ] && [ -d "$lpath" ]; then
+      _tmx_dir="$lpath"
+      return 0
+    fi
+  done <<<"$_tmx_tmux_sessions"
+  return 1
+}
+
+# Find the main checkout root that owns directory $1 by walking upward
+# through the filesystem, without forking. Sets $_tmx_root on success;
+# returns 1 if $1 isn't inside a git repo (walked all the way to "/").
+# The only case that forks is a linked worktree whose recorded gitdir is a
+# relative path -- rare in practice (git records absolute gitdir paths) --
+# where one `cd`+`pwd -P` subshell normalizes it.
+_tmx_repo_root () {
+  local cur="$1" parent line gitdir name reldir relfile
+  case "$cur" in
+    /*) ;;
+    *) cur="$PWD/$cur" ;;
+  esac
+  [ "$cur" != "/" ] && cur="${cur%/}"
+  while true; do
+    if [ -d "$cur/.git" ]; then
+      _tmx_root="$cur"
+      return 0
+    fi
+    if [ -f "$cur/.git" ]; then
+      IFS= read -r line < "$cur/.git" || return 1
+      gitdir="${line#gitdir: }"
+      case "$gitdir" in
+        /*) ;;
+        */*) reldir="${gitdir%/*}"; relfile="${gitdir##*/}"
+             gitdir="$(cd "$cur/$reldir" 2>/dev/null && pwd -P)/$relfile" ;;
+        *)   gitdir="$(cd "$cur" 2>/dev/null && pwd -P)/$gitdir" ;;
+      esac
+      case "$gitdir" in
+        */worktrees/*)
+          name="${gitdir##*/worktrees/}"
+          _tmx_root="${gitdir%/worktrees/"$name"}"
+          _tmx_root="${_tmx_root%/.git}"
+          return 0
+          ;;
+        *) return 1 ;;
+      esac
+    fi
+    [ "$cur" = "/" ] && return 1
+    parent="${cur%/*}"
+    [ -z "$parent" ] && parent="/"
+    cur="$parent"
+  done
+}
+
 # The git repos among sesh's sessions and directories, deduped to their main
 # checkout root (linked worktrees collapse into their repo), ~-abbreviated.
 _tmx_repos () {
-  local sel dir root
+  local sel _tmx_tmux_sessions _tmx_dir _tmx_root
+  _tmx_tmux_sessions="$(tmux list-sessions -F '#{session_name}	#{session_path}' 2>/dev/null)"
   sesh list | awk '!seen[$0]++' | while IFS= read -r sel; do
-    dir="$(_tmx_resolve_dir "$sel" 2>/dev/null)" || continue
-    root="$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || continue
-    echo "${root%/.git}"
+    _tmx_resolve_from_sessions "$sel" || continue
+    _tmx_repo_root "$_tmx_dir" || continue
+    echo "$_tmx_root"
   done | awk '!seen[$0]++' | sed "s|^$HOME|~|"
 }
 
@@ -91,28 +159,68 @@ _tmx_new () {
   sesh connect "$wt"
 }
 
-# Stage two: open one of <root>'s worktrees, or create one by typing a new
-# branch name. Returns 1 on cancel so the caller can reopen stage one.
-_tmx_pick_worktree () {
-  local root="$1" out tab=$'\t'
-  out="$(_tmx_repo_worktrees "$root" | \
-    fzf --delimiter "$tab" --with-nth 1 \
-        --bind 'enter:accept-or-print-query' \
-        --header "$(basename "$root") worktrees | enter: open, or type a new branch name to create")" || return 1
-  [ -n "$out" ] || return 1
-  case "$out" in
-    *"$tab"*) sesh connect "${out#*"$tab"}" ;;
-    *)        _tmx_new "$root" "$out" ;;
-  esac
+# Repos checked out under this base are labeled by their path relative to
+# it (host/org/repo, e.g. "github.com/invzn/environment"); repos elsewhere
+# fall back to their directory basename.
+_TMX_REPO_BASE="$HOME/Development/remote"
+
+# Display label for the repo rooted at $1. Sets $_tmx_label; no forks.
+_tmx_repo_label () {
+  local root="$1"
+  _tmx_label="${root#"$_TMX_REPO_BASE"/}"
+  [ "$_tmx_label" = "$root" ] && _tmx_label="${root##*/}"
+}
+
+# Every worktree of every repo as "[repo] name\t<path>" lines, most
+# recently used first (recency = the last tmux attach of a session rooted
+# at the worktree; sessionless worktrees keep repo order at the end). With
+# fzf's default bottom-prompt layout that puts the most recent entries at
+# the bottom, next to the prompt.
+_tmx_worktrees_mru () {
+  local repo root name path t p mru sessions tab=$'\t' _tmx_label
+  sessions="$(tmux list-sessions -F '#{session_last_attached}	#{session_path}' 2>/dev/null)"
+  _tmx_repos | while IFS= read -r repo; do
+    root="${repo/#\~/$HOME}"
+    _tmx_repo_label "$root"
+    _tmx_repo_worktrees "$root" | while IFS=$'\t' read -r name path; do
+      mru=0
+      while IFS=$'\t' read -r t p; do
+        if [ "$p" = "$path" ] && [ "${t:-0}" -gt "$mru" ]; then
+          mru="$t"
+        fi
+      done <<<"$sessions"
+      printf '%s\t[%s] %s\t%s\n' "$mru" "$_tmx_label" "$name" "$path"
+    done
+  done | sort -s -t "$tab" -k1,1rn | cut -f2-
+}
+
+# ctrl-n flow: pick the repo, type the new branch name, create + connect.
+# Returns 1 on cancel at either step so the caller can reopen the picker.
+_tmx_new_flow () {
+  local repo root branch
+  repo="$(_tmx_repos | fzf --header 'new worktree in which repo?')" || return 1
+  [ -n "$repo" ] || return 1
+  root="${repo/#\~/$HOME}"
+  read -r -p "new branch name: " branch || return 1
+  [ -n "$branch" ] || return 1
+  _tmx_new "$root" "$branch"
 }
 
 _tmx_pick () {
-  local repo root
+  local out key sel tab=$'\t'
   while true; do
-    repo="$(_tmx_repos | fzf --header 'pick a repo')" || return 0
-    [ -n "$repo" ] || return 0
-    root="$(_tmx_resolve_dir "$repo")" || return 1
-    _tmx_pick_worktree "$root" && return 0
+    out="$(_tmx_worktrees_mru | \
+      fzf --delimiter "$tab" --with-nth 1 --expect=ctrl-n \
+          --header 'enter: open | ctrl-n: new worktree')" || return 0
+    key="${out%%$'\n'*}"
+    sel="${out#*$'\n'}"
+    if [ "$key" = "ctrl-n" ]; then
+      _tmx_new_flow && return 0
+      continue
+    fi
+    [ -n "$sel" ] || return 0
+    sesh connect "${sel#*"$tab"}"
+    return 0
   done
 }
 
