@@ -151,7 +151,10 @@ section it fills.
 
 - **In:** the strategic intent.
 - **Do:** have the lead agent generate **two or more radically different**
-  designs — not variations, genuinely different abstractions. Judge them on
+  designs — not variations, genuinely different abstractions. Vantage seeds for
+  the alternatives may be drawn from different families in the
+  [pattern catalog](./DESIGN-PATTERNS.md) — **a pattern is a vantage, never a
+  verdict**. Judge them on
   **depth** (powerful behavior behind a simple interface) and **information
   hiding** (which decisions stay encapsulated), not on which is easiest to build.
 - **Out:** the chosen abstraction and *why it is deeper* than the runners-up —
@@ -214,6 +217,10 @@ section it fills.
     abstraction (the model often can't see what already exists).
   - **Comment repeats code** — narration of *what* the line does instead of the
     non-obvious *why*.
+  **Pattern misapplication** is hunted through the same lens: each entry in the
+  [pattern catalog](./DESIGN-PATTERNS.md) names its characteristic shallow form
+  (*red flag when*) — a Strategy with one strategy, a Factory over one type, a
+  pass-through Facade — and each maps onto one of the flags above.
   Each finding is either repaired (pull complexity down, deepen the interface,
   factor the repetition) or explicitly refuted with reasoning.
 - **Out:** an implementation with every flag repaired or refuted — the audit
@@ -267,7 +274,9 @@ All terminology this specification uses — *complexity*, *deep* / *shallow
 module*, *interface*, *design red flags*, *tactical vs. strategic programming*,
 and the rest — is defined in the self-contained
 [`GLOSSARY.md`](./GLOSSARY.md) beside this document, so the workflow stands on its
-own. The conceptual summary of *A Philosophy of Software Design* this workflow is
+own. The named design-pattern vocabulary the stages draw on — each pattern with
+what it hides, when it is deep, and when applying it is itself a red flag — is
+[`DESIGN-PATTERNS.md`](./DESIGN-PATTERNS.md). The conceptual summary of *A Philosophy of Software Design* this workflow is
 built on lives in
 [`PHILOSOPHY_OF_SOFTWARE_DESIGN.md`](../PHILOSOPHY_OF_SOFTWARE_DESIGN.md).
 

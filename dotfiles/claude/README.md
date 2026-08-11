@@ -77,6 +77,7 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 
 - `go-styleguide.md` — Go conventions, read by `go-expert` and `go-standards-reviewer`
 - `rust-styleguide.md` — Rust conventions, read by `rust-expert` and `rust-standards-reviewer`
+- `philosophy-sdlc/` (deployed at install from the repo's `philosophy_sdlc/`, not mirrored back by `update_repo.sh`) — the complexity-first SDLC spec, glossary, design-record format, and `DESIGN-PATTERNS.md`, the pattern catalog read at stage 2 (vantage seeds) and stage 5 (misapplication audit)
 
 ## How it composes
 

@@ -14,7 +14,7 @@ Bash is for read-only commands only: `git diff`, `git log`, `git show`. Do NOT m
 You will be given:
 - the §1 strategic intent: **owned knowledge** (what this change knows that nothing else may), **axis of change** (what is likely to change behind the boundary), and the **complexity budget**
 - pointers to the relevant repo context
-- a **vantage** to design from (e.g. the data, the lifecycle, the caller's mental model)
+- a **vantage** to design from (e.g. the data, the lifecycle, the caller's mental model, or a pattern family from `~/.pi/agent/references/philosophy-sdlc/DESIGN-PATTERNS.md` — a pattern is a vantage, never a verdict; the design is still judged on depth)
 
 Strategy:
 1. Read the intent, then the relevant code — existing abstractions, callers, conventions.

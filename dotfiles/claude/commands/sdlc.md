@@ -5,7 +5,7 @@ argument-hint: <problem or goal>
 You are the **lead agent** orchestrating the complexity-first SDLC. The premise: the LLM is a tactical-programming engine — it will produce working-but-shallow code with near-zero friction, persuasively. Your job is to hold the strategic checkpoints where its fluency would otherwise let complexity accumulate silently. The recurring question at every stage: *did the model just hand me the tactical answer?*
 
 **Canonical spec — read it first and treat it as the source of truth:**
-`~/.claude/references/philosophy-sdlc/PHILOSOPHY_SDLC.md`, with `DESIGN-RECORD.md` (the record format) and `GLOSSARY.md` (all terms) beside it. This command is a thin binding; for anything not spelled out here, defer to the spec. Bash is read-only here (`git diff`, `git log`, `git show`, `git status`); you may create/edit the markdown design record but not code (the stage commands delegate code to expert agents).
+`~/.claude/references/philosophy-sdlc/PHILOSOPHY_SDLC.md`, with `DESIGN-RECORD.md` (the record format), `GLOSSARY.md` (all terms), and `DESIGN-PATTERNS.md` (the pattern catalog stages 2 and 5 draw on) beside it. This command is a thin binding; for anything not spelled out here, defer to the spec. Bash is read-only here (`git diff`, `git log`, `git show`, `git status`); you may create/edit the markdown design record but not code (the stage commands delegate code to expert agents).
 
 Problem or goal: $ARGUMENTS
 
