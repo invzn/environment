@@ -1,6 +1,6 @@
 # Rust Style Guide
 
-Standards derived from the Rust API Guidelines, Effective Rust (David Drysdale), Rust for Rustaceans (Jon Gjengset), Rust Design Patterns (rust-unofficial), the Rustonomicon, and the std/Tokio API documentation. All Rust agents must follow these conventions.
+All Rust agents must follow these conventions.
 
 This guide assumes Edition 2024 (Rust 1.85+). Version-specific behavior is noted where relevant.
 
@@ -17,7 +17,7 @@ These rules govern how a Rust agent applies the rest of this guide. They take pr
 - Apply rules at the boundaries this guide names. A rule about public APIs applies to `pub` items, not to private helpers. Do not extrapolate a rule to adjacent constructs because they "feel similar."
 - The 🔧 marker means a lint exists for the rule — it does not relieve you of following the rule. Write code that already conforms; do not rely on CI to fix your output. Lints marked *(pedantic)*, *(nursery)*, or *(restriction)* are not on by default; the rule still applies.
 - When two rules conflict on a specific case, prefer the rule that is more local (function-level over crate-level), more specific (named construct over general principle), and explicitly marked as overriding.
-- Never add `#[allow(...)]` to silence a lint without a comment justifying it.
+- Prefer `#[expect(...)]` (1.81+) over `#[allow(...)]` to suppress a lint — it warns when the suppression stops being necessary, so it cannot go stale. Either way, never suppress a lint without a comment justifying it.
 
 ## Recommended Toolchain
 
@@ -39,7 +39,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - 1.77: C-string literals `c"..."`
 - 1.80: `LazyCell` / `LazyLock` (replaces `lazy_static`/`once_cell` crates)
 - 1.82: `&raw const` / `&raw mut` pointer syntax
-- 1.85: **Edition 2024** — RPIT captures all in-scope lifetimes by default, `unsafe_op_in_unsafe_fn` denied by default, `unsafe extern` blocks, `unsafe` attributes, `Future`/`IntoFuture` in prelude
+- 1.85: **Edition 2024** — RPIT captures all in-scope lifetimes by default, `unsafe_op_in_unsafe_fn` warns by default, `unsafe extern` blocks, `unsafe` attributes, `env::set_var`/`remove_var` become `unsafe`, `Future`/`IntoFuture` in prelude
 - 1.88: `let` chains (`if let Some(x) = a && x > 0`) — Edition 2024 only
 
 ---
@@ -48,14 +48,14 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 ## Naming
 
-- 🔧 `snake_case` for functions, methods, variables, modules; `UpperCamelCase` for types, traits, enum variants; `SCREAMING_SNAKE_CASE` for constants and statics (`rustc: non_camel_case_types`, `non_snake_case`, `non_upper_case_globals`)
+- 🔧 `snake_case` for functions, methods, variables, modules; `UpperCamelCase` for types, traits, enum variants; `SCREAMING_SNAKE_CASE` for constants and statics (`rustc: non_camel_case_types`, `rustc: non_snake_case`, `rustc: non_upper_case_globals`)
 - Acronyms in `UpperCamelCase` names: only the first letter capitalized — `HttpServer`, `UrlPath`, `Uuid`. Never `HTTPServer` (opposite of Go).
 - Conversion method prefixes (API Guidelines C-CONV): `as_` — cheap borrowed→borrowed view (`as_str`); `to_` — expensive owned copy or repr change (`to_string`, `to_vec`); `into_` — consuming ownership transfer (`into_bytes`, `into_inner`)
-- Getters: no `get_` prefix — `user.name()`, not `user.get_name()`. Exception: `get`/`get_mut` on container types where the method takes a key/index and returns `Option`.
+- Getters: no `get_` prefix — `user.name()`, not `user.get_name()`. Exception: `get` when there is a single obvious thing to get (`Cell::get`), including `get`/`get_mut` on container types taking a key/index and returning `Option`.
 - Iterator methods: `iter()` → `&T`, `iter_mut()` → `&mut T`, `into_iter()` → `T`; a method returning an iterator names the iterator type after itself (C-ITER-TY)
 - Predicates: `is_`/`has_` prefix returning `bool`
 - 🔧 Constructors: `new` for the primary constructor (no arguments or the obvious ones); `with_x`/`from_x` for alternates; implement `Default` when a no-argument `new` exists (`new_without_default`)
-- 🔧 Don't stutter with the module path: `process::spawn`, not `process::spawn_process` — items are referenced through their module (`module_name_repetitions`, *pedantic*)
+- 🔧 Don't stutter with the module path: `process::spawn`, not `process::spawn_process` — items are referenced through their module (`module_name_repetitions`, *restriction*)
 - Type parameters: single uppercase letters — `T` general, `K`/`V` key/value, `E` error; use descriptive names (`Backend`, `Codec`) when several parameters coexist
 - Lifetimes: short (`'a`, `'b`) by default; descriptive (`'src`, `'conn`) when multiple lifetimes interact
 - Crate names: `kebab-case` on crates.io, referenced as `snake_case` in code; avoid `rust-`/`-rs` prefixes/suffixes
@@ -65,7 +65,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Group `use` statements: `std`/`core`/`alloc`, then external crates, then `crate`/`self`/`super` — blank line between groups (rustfmt `group_imports` can enforce; it is unstable, so maintain groups manually)
 - Import types, traits, and enums directly (`use std::collections::HashMap`); call functions through their parent module (`fmt::format`, `mem::swap`) — the module name gives call sites context
 - 🔧 No glob imports except a crate's intentional `prelude` and `use super::*` in test modules (`wildcard_imports`, *pedantic*)
-- Import enum variants locally inside a `match`-heavy function if it helps readability (`use Direction::*;` scoped to the function); never at module scope
+- 🔧 Import enum variants locally inside a `match`-heavy function if it helps readability (`use Direction::*;` scoped to the function); never at module scope (`enum_glob_use`, *pedantic*)
 - Use `pub use` at the crate root to re-export the public API from deep module paths — callers should write `mycrate::Client`, not `mycrate::net::client::Client`
 - Traits must be in scope for their methods to resolve; when a trait is imported only for its methods, `use std::io::Write as _;` documents that intent
 
@@ -73,8 +73,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 - `Result<T, E>` for recoverable errors; `panic!` only for bugs (violated invariants, impossible states). A library that panics on bad input is broken — return `Err`.
 - Propagate with `?`. Do not `match` on a `Result` just to return the error unchanged.
-- 🔧 Never `unwrap()`/`expect()` in library code (`unwrap_used`, `expect_used`, *restriction*). In binaries, `expect` is acceptable at startup (config loading, arg parsing) where dying with a message is the correct behavior.
-- When an invariant makes failure impossible, use `expect` with a message stating *why it cannot fail*, in the "should" style: `.expect("regex is validated at compile time")`, not `.expect("failed to compile regex")`
+- 🔧 Never `unwrap()`/`expect()` in library code, with one exception: when an invariant makes failure impossible, `expect` is allowed — with a message stating *why it cannot fail*, in the "should" style: `.expect("regex is validated at compile time")`, not `.expect("failed to compile regex")` (`unwrap_used`, `expect_used`, *restriction*). In binaries, `expect` is also acceptable at startup (config loading, arg parsing) where dying with a message is the correct behavior.
 - Custom error types, crate-neutral pattern — an enum per fallible subsystem:
   ```rust
   #[derive(Debug)]
@@ -113,6 +112,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - `#[non_exhaustive]` on public error enums — lets you add variants without a semver-major bump
 - Error messages: lowercase, no trailing punctuation, state what was being attempted (`"reading config {path}"`), because messages compose into chains
 - `Box<dyn std::error::Error + Send + Sync>` (or a type alias for it) is acceptable as the error type in binaries and prototypes; libraries define concrete error types
+- Libraries with one dominant error type define `pub type Result<T> = std::result::Result<T, Error>;` at the crate root, mirroring `std::io::Result`
 - Choosing an error type:
 
   | Scenario | Error type |
@@ -129,12 +129,13 @@ For matching older codebases (check `rust-version` in Cargo.toml):
       return Err(e.into());
   }
 
-  // ✅ return with context; the boundary decides how to report
-  store.save(&user).map_err(SaveError::Store)?;
+  // ✅ return the error — `?` converts via the From impl; the boundary decides how to report
+  store.save(&user)?;
   ```
 - Panic policy: `unreachable!()` for logically impossible branches, `debug_assert!` for internal invariants checked in debug only, `assert!` for cheap invariants worth keeping in release. Document every reachable panic in a `# Panics` doc section.
 - Never let a panic cross an FFI boundary — panicking out of an `extern "C"` fn aborts. Use `std::panic::catch_unwind` at FFI and thread boundaries only; never for control flow.
 - 🔧 Prefer `.get(i)` returning `Option` over indexing `[i]` in library code where out-of-bounds is reachable from caller input (`indexing_slicing`, *restriction*)
+
 ## Numeric Types
 
 - 🔧 Integer arithmetic: debug builds panic on overflow, release builds wrap silently. For arithmetic on untrusted or unbounded input, choose explicitly: `checked_add`, `saturating_add`, or `wrapping_add` (`arithmetic_side_effects`, *restriction*)
@@ -153,7 +154,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - 🔧 Standard sections in order, when applicable: `# Examples`, `# Errors` (when returning `Result`), `# Panics` (any reachable panic), `# Safety` (unsafe fns) (`missing_errors_doc`, `missing_panics_doc`, *pedantic*; `missing_safety_doc`)
 - Doc examples are compiled and run as tests — keep them minimal, use `?` in examples via the hidden `# fn main() -> Result<...>` pattern, hide setup lines with `#`
 - Use intra-doc links: `` [`Client`] ``, `` [`Self::send`] `` — they're checked at doc build
-- Mark superseded public items with `#[deprecated(since = "x.y.z", note = "use new_fn instead")]` — downstream callers get a compiler warning
+- Mark superseded public items with `#[deprecated(since = "1.2.0", note = "use new_fn instead")]` — downstream callers get a compiler warning. `since` must be a real semver version: 🔧 `deprecated_semver` (deny-by-default) rejects placeholders like `x.y.z`.
 - Crate-level docs in `lib.rs` with `//!` — what the crate does, a quickstart example
 - Avoid comments that restate the code; comment *why*, not *what*
 
@@ -196,7 +197,16 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   | One-time lazy init | `OnceLock<T>` / `LazyLock<T>` |
 - `Rc<RefCell<T>>` appearing in a design is a smell — usually the ownership story hasn't been thought through; consider handles/indices into a central store, or restructure. Legitimate uses exist (graph structures with genuinely shared mutable nodes, single-threaded interpreter environments, GUI callback registries) — reach them by elimination, not by default.
 - `RefCell` panics on double-borrow at runtime — you are trading compile-time checking for a runtime crash; keep borrow scopes minimal and never hold a borrow across a callback
+- Atomics take an explicit `Ordering`: `Relaxed` for standalone counters and flags no other data depends on; `Release` on the store / `Acquire` on the load when the atomic publishes writes to other memory; `SeqCst` only when reasoning genuinely requires a single global order (rare — comment why). If choosing an ordering takes real thought, use a `Mutex` — never hand-roll lock-free data structures.
 - Global state: `static X: LazyLock<T>` (1.80+) for lazy statics; `OnceLock` when initialization needs runtime input. Avoid mutable globals; pass dependencies explicitly.
+
+## Drop and RAII
+
+- 🔧 `let _ = expr` drops the value immediately; `let _guard = expr` holds it to end of scope. Never bind a `MutexGuard` or other RAII guard to `_` (`let_underscore_lock`, deny-by-default, catches the lock case). To end a critical section early, call `drop(guard)` — explicit and searchable.
+- A temporary created in a `match`/`if let` scrutinee lives until the end of the whole expression: `match map.lock().unwrap().get(&k) { ... }` holds the lock through every arm, so re-locking inside an arm deadlocks — bind the guard to a local first
+- `Drop::drop` must never panic — a panic during unwind aborts the process. Do fallible cleanup in an explicit `close(self) -> Result<...>`; `Drop` is the silent best-effort fallback.
+- You cannot move fields out of a type implementing `Drop` (E0509) — store such fields as `Option<T>` and `.take()` them, or use `mem::take`/`mem::replace`
+- Drop order: locals drop in reverse declaration order, struct fields in declaration order — when a struct holds a guard and the resource it guards, declare the guard field first so it drops first
 
 ## API Design Patterns
 
@@ -211,10 +221,12 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Newtype pattern for domain values: `struct UserId(u64);` — prevents argument transposition, carries invariants, costs nothing at runtime. Derive what the type semantically supports (`Clone, Copy, Debug, PartialEq, Eq, Hash`), no more.
 - Typestate for protocol-like APIs where operations are only valid in certain states (`Request<Building>` → `Request<Ready>`) — use sparingly; it multiplies types
 - 🔧 Derive `Debug` on public types by default (`rustc: missing_debug_implementations`, opt-in) — **except** types holding secrets, credentials, or tokens: derived `Debug` prints them verbatim into logs and panic messages, so implement `Debug` manually with redaction (`write!(f, "Credentials {{ user: {}, password: [REDACTED] }}", self.user)`). `Clone`, `PartialEq` when semantically valid; `Copy` only for small (≤ ~2 words) value types whose copies are semantically free.
+- 🔧 `Eq`, `Hash`, and `Ord` are a contract, not a menu: `a == b` must imply equal hashes, and `Ord` must agree with `PartialEq`/`PartialOrd`. Derive them together or implement them together over the same fields — never mix a manual impl of one with derives of the others (`derived_hash_with_manual_eq`, deny-by-default, catches the Hash/Eq case). To sort by one key without redefining equality, use `sort_by_key` at the call site.
 - 🔧 `#[must_use]` on functions whose return value is the entire point (builders, pure computations) and on guard-like types (`must_use_candidate`, *pedantic*)
-- `#[non_exhaustive]` on public enums and structs that will grow; forces downstream `match` to include `_`
+- `#[non_exhaustive]` on public enums and structs that will grow — on enums it forces downstream `match` to include `_`; on structs it blocks downstream literal construction and forces `..` in destructuring patterns
 - Do not implement `Deref` to emulate inheritance — `Deref` is for smart pointers only
-- Implement std traits rather than inventing methods: `Display` (never implement `ToString` directly — it's blanket-derived from `Display`), `FromStr`, `From`/`TryFrom` for conversions, `IntoIterator` for collection-likes, `Default` for zero-config construction
+- Implement std traits rather than inventing methods: `Display` (never implement `ToString` directly — a blanket impl provides it for every `Display` type), `FromStr`, `From`/`TryFrom` for conversions, `IntoIterator` for collection-likes, `Default` for zero-config construction
+- `Display`/`FromStr` are a round-trip pair: `s.parse::<T>()` must accept everything `t.to_string()` produces — a natural property test. When a codebase serializes with serde, mirror its existing attribute conventions (`rename_all`, `deny_unknown_fields`) instead of inventing per-type styles.
 - Implement `From`, bound on `Into`: provide `impl From<A> for B`; generic functions take `impl Into<B>`
 - Sealed trait pattern when downstream impls would break your evolution:
   ```rust
@@ -232,8 +244,9 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - `dyn Trait` costs an indirect call per invocation (no inlining across the vtable) and, when boxed, a heap allocation — acceptable on cold paths, a real cost in per-item hot loops
 - `impl Trait` in argument position is fine for simple bounds; switch to named generics when the caller might need turbofish or the type appears twice
 - Return-position `impl Trait` (RPIT) for returning closures and iterators; note Edition 2024 captures all in-scope lifetimes by default (use `+ use<>` syntax to opt out)
+- Accept the loosest closure bound that works: `FnOnce` if called at most once, `FnMut` if called repeatedly, `Fn` only if called through a shared reference (e.g. concurrently) — over-demanding `Fn` forces callers to clone captured state. Take closures as generics (`impl FnOnce(...)`); `Box<dyn Fn...>` is for storing callbacks in structs, not for parameters.
 - `where` clauses when bounds don't fit inline; put the bound where it's needed (on the method, not the struct, unless the struct's invariants require it)
-- Dyn compatibility (object safety): no generic methods, no `Self: Sized` returns, no `self`-by-value without `Sized` — design traits you intend to box accordingly; split a trait into a dyn-compatible core plus generic extension methods if needed
+- Dyn compatibility (object safety): no generic methods, no methods mentioning `Self` in their signature (e.g. returning `Self`), no associated consts. A method can opt out of the vtable with `where Self: Sized`, keeping the rest of the trait dyn-compatible; by-value `self` methods don't break dyn compatibility but cannot be called through `dyn`. Design traits you intend to box accordingly; split a trait into a dyn-compatible core plus generic extension methods if needed
 - `async fn` in traits (1.75+) works for generics but such traits are not dyn-compatible — if you need `Box<dyn Service>`, desugar to `fn(&self) -> Pin<Box<dyn Future<Output = T> + Send + '_>>` manually or keep the trait generic-only
 - Avoid trait hierarchies more than two levels deep; prefer composition of small traits
 - Blanket impls (`impl<T: Foo> Bar for T`) are powerful and irrevocable in semver terms — add one only with a doc comment on the impl stating its intended scope and why a blanket (rather than per-type) impl is warranted
@@ -248,11 +261,11 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 ## Pattern Matching
 
-- 🔧 `match` on your own enums must be exhaustive without `_` — a wildcard arm silently swallows future variants; list variants explicitly so adding one breaks compilation (`wildcard_enum_match_arm`, *restriction*)
-- `_` catchalls are fine on `#[non_exhaustive]` foreign enums (required) and on truly don't-care integer/char matches
+- 🔧 `match` on enums defined in the *same crate* must be exhaustive without `_` — a wildcard arm silently swallows future variants; list variants explicitly so adding one breaks compilation (`wildcard_enum_match_arm`, *restriction*)
+- `_` catchalls are fine on `#[non_exhaustive]` enums from any other crate (required — the attribute forces `_` even in sibling crates of your own workspace) and on truly don't-care integer/char matches
 - 🔧 `let`-`else` for extract-or-early-return: `let Some(user) = find(id) else { return Err(...) };` (`manual_let_else`, *pedantic*)
 - `if let` for a single variant when the other cases genuinely need nothing; `matches!(x, Pattern)` for boolean checks
-- Prefer combinators when they read linearly — `opt.map(f).unwrap_or_default()`, `result.ok_or(Error::Missing)?` — and `match` when logic branches or nests; never chain more than ~3 combinators
+- Prefer combinators when they read linearly — `opt.map(f).unwrap_or_default()`, `result.ok_or(Error::Missing)?` — and `match` when logic branches or nests; never chain more than ~3 `Option`/`Result` combinators (this limit does not apply to iterator adapter chains, which stay readable much longer)
 - Destructure structs in `match`/`let` to bind several fields at once; use `..` to ignore the rest explicitly
 - `@` bindings capture while testing: `n @ 1..=5 => ...`
 - Model states as data-carrying enums, not flag fields: ❌ `struct Conn { connected: bool, addr: Option<Addr> }` → ✅ `enum Conn { Disconnected, Connected(Addr) }` — make invalid states unrepresentable
@@ -262,7 +275,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 # Collections and Iterators
 
 - 🔧 Prefer iterator chains over index loops (`needless_range_loop`); prefer `for` loops over `.for_each()` except at the end of long chains
-- 🔧 In release builds, statically dispatched iterator chains compile to the same code as hand-written loops. That does not hold in debug builds or across `Box<dyn Iterator>`/`Box<dyn Fn>` boundaries, where dynamic dispatch defeats inlining. An intermediate `.collect::<Vec<_>>()` is (`needless_collect`, *nursery*)
+- 🔧 In release builds, statically dispatched iterator chains compile to the same code as hand-written loops. That does not hold in debug builds or across `Box<dyn Iterator>`/`Box<dyn Fn>` boundaries, where dynamic dispatch defeats inlining. An intermediate `.collect::<Vec<_>>()` mid-chain forces an allocation and defeats laziness — keep the chain lazy until the final consumer (`needless_collect`, *nursery*)
 - Collect a `Vec<Result<T, E>>` into `Result<Vec<T>, E>` directly: `items.iter().map(parse).collect::<Result<Vec<_>, _>>()?` — stops at first error
 - `iter()` borrows, `into_iter()` consumes, `iter_mut()` mutates in place — a `for x in collection` loop calls `into_iter()` and consumes; loop over `&collection` to borrow
 - 🔧 Use the entry API for insert-or-update: `*map.entry(key).or_insert(0) += 1` — one lookup, not two (`map_entry`)
@@ -272,6 +285,17 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - `HashMap` iteration order is arbitrary and varies per process — `BTreeMap` when deterministic order matters; `VecDeque` for FIFO queues
 - Strings: `len()` is bytes, not chars; `chars()` yields Unicode scalars, not grapheme clusters — slicing at a non-boundary byte index panics. Use `char_indices()`, `get(a..b)` for fallible slicing.
 - `&str` for borrowed text, `String` for owned, `&[u8]`/`Vec<u8>` for bytes that may not be UTF-8 — convert with `from_utf8` (checked), never `from_utf8_unchecked` outside proven-safe decoding paths
+- Paths are not strings: display with `path.display()`, never `to_str().unwrap()` (panics on non-UTF-8 paths); `to_string_lossy()` only for human-facing text; keep `Path`/`OsStr` end-to-end when the value goes back to the filesystem
+
+---
+
+# IO
+
+- Wrap `File` in `BufReader`/`BufWriter` for anything beyond a one-shot `fs::read_to_string`/`fs::write` — unbuffered read/write loops pay a syscall per call
+- `BufWriter`'s implicit flush on drop ignores errors — call `flush()?` explicitly before the writer goes out of scope
+- Bulk terminal output: lock once (`let mut out = io::stdout().lock()`) and `writeln!` to it — `println!` re-locks per call. Data goes to stdout; diagnostics and progress go to stderr, so output stays pipeable.
+- Prefer returning from `main` (or `std::process::ExitCode`) over `std::process::exit`, which skips destructors and unflushed buffers
+- `main() -> Result<_, E>` reports the error via `Debug`, not `Display` — for user-facing binaries, catch the error in `main` and print its `Display` chain (walk `source()`) to stderr yourself
 
 ---
 
@@ -283,7 +307,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Data races are compile errors in safe Rust — but deadlocks, race conditions on external state, and channel misuse are not; the type system does not absolve you of concurrency design
 - `std::thread::scope` (1.63+) to spawn threads that borrow from the parent stack; plain `thread::spawn` requires `'static` data
 - Lock discipline: keep critical sections short; never call unknown/user code while holding a lock; acquire multiple locks in one global order
-- A poisoned `Mutex` (a thread panicked while holding it) — in binaries, propagating the panic with `.expect("mutex poisoned")` is standard; libraries that must survive use `.unwrap_or_else(|p| p.into_inner())` deliberately
+- A poisoned `Mutex` (a thread panicked while holding it) — propagating the panic with `.expect("lock poisoned: holder panicked")` is standard in binaries *and* libraries (poisoning means another thread already hit a bug, an explicit exception to the library `expect` ban); libraries that must keep functioning past poisoning use `.unwrap_or_else(|p| p.into_inner())` deliberately
 - Returning a guard (`MutexGuard`) from a public method leaks locking policy into the API — wrap access in methods instead
 
 ## Tokio
@@ -303,15 +327,19 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   ```rust
   // ❌ read_line is not cancellation-safe — a tick can drop it mid-read, losing buffered data
   loop {
+      buf.clear();
       tokio::select! {
           _ = interval.tick() => flush_stats(),
-          n = reader.read_line(&mut buf) => process(&buf[..n?]),
+          Ok(n) = reader.read_line(&mut buf) => {
+              if n == 0 { break; }
+              process(&buf);
+          }
       }
   }
 
   // ✅ isolate the read in its own task; the select loop consumes only complete messages
   let (tx, mut rx) = tokio::sync::mpsc::channel(16);
-  tokio::spawn(async move {
+  let reader_task = tokio::spawn(async move {
       loop {
           let mut line = String::new();
           match reader.read_line(&mut line).await {
@@ -323,9 +351,13 @@ For matching older codebases (check `rust-version` in Cargo.toml):
   loop {
       tokio::select! {
           _ = interval.tick() => flush_stats(),
-          Some(line) = rx.recv() => process(&line),
+          maybe_line = rx.recv() => match maybe_line {
+              Some(line) => process(&line),
+              None => break, // reader task ended (EOF or read error)
+          },
       }
   }
+  reader_task.await.expect("reader task panicked"); // never fire-and-forget: surface the task's panics
   ```
 - Graceful shutdown pattern: listen on `tokio::signal::ctrl_c()`, broadcast shutdown via a `watch` channel, give tasks a deadline (`tokio::time::timeout`) to drain, then abort stragglers via `JoinSet::abort_all`
 - There is no async `Drop`: types owning async resources need an explicit `async fn shutdown(self)` — document that dropping without calling it leaks or blocks
@@ -333,7 +365,8 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 ### Blocking and locking
 
 - Blocking work on the runtime starves all tasks on that worker: CPU-bound or blocking-IO work goes in `tokio::task::spawn_blocking`; async code must not call blocking std IO, `std::thread::sleep`, or busy loops without `yield_now`. The blocking pool is bounded (512 threads by default) and each call dispatches to another OS thread — batch small blocking calls rather than issuing thousands.
-- 🔧 Mutex choice: `std::sync::Mutex` for short critical sections that never hold the guard across `.await` (it's faster, and a std guard held across `.await` either fails `tokio::spawn`'s `Send` bound or stalls every task on that worker thread); `tokio::sync::Mutex` only when the guard must live across an `.await` (`await_holding_lock`, *suspicious*, catches std guards held across await)
+- 🔧 Mutex choice: `std::sync::Mutex` for short critical sections that never hold the guard across `.await` (it's faster, and a std guard held across `.await` either fails `tokio::spawn`'s `Send` bound, stalls every task on that worker thread, or deadlocks a current-thread runtime outright); `tokio::sync::Mutex` only when the guard must live across an `.await` (`await_holding_lock`, *suspicious*, catches std guards held across await)
+
 ### Channels
 
 - Channels: `mpsc::channel(n)` bounded by default — backpressure is a feature; `unbounded_channel` needs a stated justification (as with Go's buffered channels). `oneshot` for single request/reply, `watch` for latest-value state, `broadcast` for fan-out.
@@ -354,7 +387,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Minimize the radius: the `unsafe` block covers only the unsafe operation; the enclosing module wraps it in a safe API whose invariants make misuse impossible. Callers of your safe API must not be able to trigger UB — if they can, the abstraction is unsound, full stop.
 - 🔧 Every `unsafe` block carries a `// SAFETY:` comment stating why the invariants hold at this call site (`undocumented_unsafe_blocks`, *restriction*)
 - 🔧 Every `unsafe fn` documents its contract under `# Safety` in rustdoc (`missing_safety_doc`)
-- Edition 2024 denies `unsafe_op_in_unsafe_fn` — write explicit `unsafe {}` blocks inside `unsafe fn` bodies, each with its own SAFETY comment
+- Edition 2024 warns on `unsafe_op_in_unsafe_fn` by default — write explicit `unsafe {}` blocks inside `unsafe fn` bodies, each with its own SAFETY comment
 - Avoid `mem::transmute` — nearly always there's a safer tool: `to_ne_bytes`/`from_ne_bytes`, pointer `cast()`, `f32::to_bits`. Transmute is the last resort and needs a paragraph-length SAFETY comment.
 - Run `cargo miri test` in CI for any crate containing `unsafe` — Miri catches UB (use-after-free, invalid aliasing, uninitialized reads) that tests pass over silently. Miri only sees executed paths and does not model most external C calls — a clean run is not a soundness proof; pair it with property tests over the unsafe-backed API.
 - Common UB to design against: creating a reference (even briefly) to uninitialized memory (`MaybeUninit` + raw pointers instead), aliasing a `&mut`, dangling pointers past owner drop, invalid values (a `bool` that is 3)
@@ -383,12 +416,14 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 # Testing
 
 - Unit tests live in a `#[cfg(test)] mod tests` block in the same file — they may test private items; integration tests live in `tests/` and see only the public API. Choose deliberately: coverage of internals vs. contract-level tests.
-- Doctests are the third tier: every public-API example is a compiled, running test — keep them realistic
+- Each file directly under `tests/` compiles as its own crate — group integration tests into a few files; shared helpers go in `tests/common/mod.rs` (a `tests/common.rs` file would itself be collected as a test crate)
+- Mark expensive tests `#[ignore = "reason"]`; run them explicitly with `cargo test -- --ignored`
+- Doctests are the third tier: every public-API example is a compiled, running test (library targets only — `cargo test` skips doctests in binary crates) — keep them realistic
 - Test names describe the scenario: `fn rejects_empty_input()`, not `fn test1()`; no `test_` prefix (the attribute already marks it)
 - `assert_eq!`/`assert_ne!` over bare `assert!(a == b)` — they print both values on failure; add context args for non-obvious asserts: `assert_eq!(got, want, "case: {name}")`
 - Tests return `Result`: `fn parses() -> Result<(), ParseError>` lets tests use `?` instead of unwrap ladders
 - `#[should_panic(expected = "substring")]` always with `expected` — a bare `should_panic` passes on *any* panic, including the bug you're not testing
-- `unwrap`/`expect` are fine in test code — a panic is a test failure; the *restriction* lints above do not apply under `#[cfg(test)]`
+- `unwrap`/`expect` are fine in test code — a panic is a test failure. Note `unwrap_used`/`expect_used` still fire under `#[cfg(test)]` by default; crates opting into those lints set `allow-unwrap-in-tests = true` (and `allow-expect-in-tests`) in `clippy.toml`.
 - Async tests: `#[tokio::test]`; use `tokio::time::pause()` + `advance()` to test timeouts without real waiting — never `sleep` your way to determinism
 - Never use real sleeps to wait for concurrent work in tests — await the handle, use channels, or paused time
 - Shared state across tests: tests run in parallel by default — tests touching process-globals (env vars, cwd, ports) must be isolated or serialized; prefer injecting the dependency
@@ -401,7 +436,7 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 # Security
 
-- Path traversal: when building a filesystem path from untrusted input (upload names, URL segments), reject `Component::ParentDir` and absolute components via `Path::components()` before joining, or `canonicalize()` the result and verify it `starts_with()` the intended root. String checks for `".."` are insufficient.
+- Path traversal: when building a filesystem path from untrusted input (upload names, URL segments), reject `Component::ParentDir` and absolute components via `Path::components()` before joining, or `canonicalize()` the parent directory and verify it `starts_with()` the intended root before joining the final component — `canonicalize()` fails on paths that don't exist yet (an upload target usually doesn't), and unlike the component check it also resolves symlinks. String checks for `".."` are insufficient.
 - `HashMap`'s default hasher (randomized SipHash) is deliberately hash-flooding-resistant — never replace it with a faster non-randomized hasher for maps keyed by attacker-controlled input (headers, form fields, JSON keys)
 - Never preallocate from an untrusted size field: a length prefix an attacker controls can drive a multi-GB `with_capacity` before any data arrives — clamp against a maximum or read incrementally (`Read::take`). Bound recursion depth in hand-written parsers over untrusted input for the same reason.
 - Error `Display` output composes into chains that callers may log or return to clients — keep secrets, credentials, and internal paths out of error messages (and out of derived `Debug`; see API Design Patterns)
@@ -426,8 +461,10 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 
 - Module files: `foo.rs` + `foo/` subdirectory — not `foo/mod.rs` (both work; pick the non-`mod.rs` style and be consistent)
 - Visibility: private by default, `pub(crate)` for internals shared across modules, `pub` only for the deliberate public surface — every `pub` is a semver commitment
+- Semver breaks that don't look like API edits: adding a non-`Send`/`Sync` field (`Rc`, `RefCell`) silently strips those auto traits from the containing public type; tightening a bound on an existing public item; a returned `impl Trait` no longer implementing an auto trait (a future losing `Send` breaks every downstream `tokio::spawn`). Check auto-trait fallout deliberately when editing public types in a library.
 - Re-export the public API at the crate root with `pub use`; deep paths are an implementation detail
 - Binary + library pattern: `main.rs` stays thin (parse args, wire config, call `lib.rs`); all logic in the library where integration tests and other binaries can reach it — mirror of Go's thin-`main` rule
+- Don't mutate process env at runtime — `env::set_var`/`remove_var` are `unsafe` in Edition 2024 (they race with concurrent `getenv`); read config once at startup and pass it down. In tests, inject values instead of setting env vars.
 - Multiple binaries: `src/bin/*.rs`, sharing the crate's library
 - Split a module when it accretes unrelated types or its name goes vague (`utils`, `helpers`, `common` are the same dumping grounds they are in Go — name modules by what they provide)
 - One concept per module; the module tree is your table of contents — a reader should locate code from names alone
@@ -446,5 +483,5 @@ For matching older codebases (check `rust-version` in Cargo.toml):
 - Iterators over indexing skips bounds checks; slices' `chunks`/`windows`/`split_at` express access patterns the optimizer vectorizes well
 - `#[inline]` only on tiny functions in a library's cross-crate hot path (generics are already inlined across crates); trust the compiler otherwise. For binaries, `lto = "thin"` in the release profile gets most of the benefit globally.
 - Release profile tuning when binary size/speed matters: `lto`, `codegen-units = 1`, `panic = "abort"` (note: abort kills `catch_unwind` — incompatible with FFI panic barriers)
-- `String`/`Vec` growth doubles capacity — amortized O(1) pushes; pre-allocation only matters in measured hot loops or for very large known sizes
+- `String`/`Vec` growth is amortized O(1) per push (current std doubles capacity — an implementation strategy, not a documented guarantee); pre-allocation only matters in measured hot loops or for very large known sizes
 - Zero-copy parsing (borrowing `&str` slices from an input buffer) beats owned extraction when the input outlives the parse — this is the legitimate home of lifetime-parameterized structs
