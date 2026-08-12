@@ -185,15 +185,15 @@ update_claude () {
       cp -L "$1/$claude_dir/CLAUDE.md" "$repo_claude_dir/CLAUDE.md"
     fi
 
-    # permissions — extracted from settings.json, never the whole file: it
-    # holds machine-local keys (hooks, model, theme) that don't belong in
-    # the repo.
+    # shared settings — extracted from settings.json, never the whole file:
+    # it holds machine-local keys (hooks, model, theme) that don't belong in
+    # the repo. Extract exactly the keys the repo owns.
     if [ -f "$1/$claude_dir/settings.json" ]; then
       if command -v jq >/dev/null 2>&1; then
-        jq '{permissions: (.permissions // {})}' \
-          "$1/$claude_dir/settings.json" > "$repo_claude_dir/permissions.json"
+        jq '{permissions: (.permissions // {}), attribution: (.attribution // {})}' \
+          "$1/$claude_dir/settings.json" > "$repo_claude_dir/shared-settings.json"
       else
-        echo "Warning: jq not found; skipping claude permissions extraction" >&2
+        echo "Warning: jq not found; skipping claude shared settings extraction" >&2
       fi
     fi
 

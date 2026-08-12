@@ -20,5 +20,10 @@
       "Bash(cargo test:*)",
       "Bash(cargo clippy:*)"
     ]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
   }
 }
