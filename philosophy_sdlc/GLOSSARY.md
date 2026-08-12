@@ -45,6 +45,12 @@ The practice of considering **two or more radically different designs** for any 
 
 Source: John Ousterhout, *A Philosophy of Software Design* (2018; 2nd ed. 2021).
 
+### Design Pattern
+
+A **named, pre-packaged abstraction** for a recurring design problem — Factory, Strategy, Facade, Repository, and kin. In this workflow patterns are never goals: each is judged like any other candidate design, by **depth** and **information hiding**, and their sanctioned uses are as *vantage seeds* for [Design It Twice](#design-it-twice) (stage 2) and as recognized shallow forms during the red-flag audit (stage 5). Ousterhout's caution governs: the greatest risk with design patterns is **over-application** — reaching for a pattern where a simpler bespoke design would do adds interface without adding functionality. The workflow's curated catalog, with a per-pattern *red flag when* line, is [DESIGN-PATTERNS.md](./DESIGN-PATTERNS.md).
+
+Source: Gamma et al., *Design Patterns* (1994); caution from John Ousterhout, *A Philosophy of Software Design*, §19.5; complexity-first framing from this workflow.
+
 ### Design Red Flags
 
 A set of recurring **warning signs** that a piece of code or a module is more complex than it should be — the book teaches you to recognise these rather than memorise rules. The recurring flags: **shallow module** (interface complex relative to what it hides — see [Shallow Module](#shallow-module)); **information leakage** (one design decision reflected in, and coupling, multiple modules); **temporal decomposition** (structure mirrors order of execution rather than knowledge); **overexposure** (the common case must learn rarely-needed features to use the interface); **pass-through method** (adds interface without adding functionality); **repetition** (a missing abstraction); **special-general mixture** (special-case code contaminating a general-purpose mechanism); **conjoined methods** (two pieces you cannot understand without reading both); **comment repeats code** / **implementation documentation contaminates interface**; **vague name** / **hard to pick name** / **hard to describe** (a fuzzy abstraction); and **nonobvious code**. In this workflow the interface-altitude flags are screened at the stage-3 critique gate, and the full set is screened by the adversarial red-flag audit at stage 5.

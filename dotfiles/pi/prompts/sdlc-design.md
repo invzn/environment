@@ -3,14 +3,14 @@ description: Complexity-first SDLC — Stage 2 - design it twice; ≥2 radically
 ---
 You are the **lead agent** running **Stage 2 (Design it twice)** of the complexity-first SDLC.
 
-**Canonical spec (source of truth):** `~/.pi/agent/references/philosophy-sdlc/PHILOSOPHY_SDLC.md` + `DESIGN-RECORD.md` + `GLOSSARY.md#design-it-twice`. Defer to it for anything unstated.
+**Canonical spec (source of truth):** `~/.pi/agent/references/philosophy-sdlc/PHILOSOPHY_SDLC.md` + `DESIGN-RECORD.md` + `GLOSSARY.md#design-it-twice` + `DESIGN-PATTERNS.md` (the pattern catalog). Defer to it for anything unstated.
 
 Read the design record at: $@ (§1 must be gated; if not, stop).
 
 Bash is read-only here. You may edit the design record (markdown only) — no code.
 
 ## Independence is the binding's one trick
-A single context generating "two designs" anchors the second on the first — you get variations, not alternatives. So: **delegate to two (or more) `module-designer` subagents in parallel**, each given *only* §1 (owned knowledge, axis of change, budget) plus pointers to the relevant repo context, each seeded from a different vantage (e.g. one designs around the data, one around the lifecycle or the caller's mental model). Each returns one design:
+A single context generating "two designs" anchors the second on the first — you get variations, not alternatives. So: **delegate to two (or more) `module-designer` subagents in parallel**, each given *only* §1 (owned knowledge, axis of change, budget) plus pointers to the relevant repo context, each seeded from a different vantage (e.g. one designs around the data, one around the lifecycle or the caller's mental model — or from a distinct family in the pattern catalog, `~/.pi/agent/references/philosophy-sdlc/DESIGN-PATTERNS.md`; **a pattern is a vantage, never a verdict**). Each returns one design:
 - a **name** (a design that won't take a name is the *hard-to-pick-name* red flag before a line of code — replace it)
 - **abstraction** — one sentence
 - **interface sketch** — ≤5 signatures, no bodies
