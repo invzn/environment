@@ -1,6 +1,7 @@
 ---
 description: "Complexity-first SDLC — Stage 3: specify the interface comment-first; critique-screen the interface-altitude red flags"
 argument-hint: <path to design record>
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git branch:*)
 ---
 You are the **lead agent** running **Stage 3 (Specify the interface)** of the complexity-first SDLC.
 

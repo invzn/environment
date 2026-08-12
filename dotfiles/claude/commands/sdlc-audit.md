@@ -1,6 +1,7 @@
 ---
 description: "Complexity-first SDLC — Stage 5: adversarial red-flag audit — every finding repaired or refuted; an un-refuted flag blocks the merge"
 argument-hint: <path to design record>
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git branch:*)
 ---
 You are the **lead agent** running **Stage 5 (Red-flag audit)** of the complexity-first SDLC — **the key LLM-specific gate**, where most model-generated complexity is caught.
 

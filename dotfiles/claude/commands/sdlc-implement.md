@@ -1,6 +1,7 @@
 ---
 description: "Complexity-first SDLC — Stage 4: implement behind the frozen interface — pull complexity downward, define errors out of existence, tests lock the contract"
 argument-hint: <path to design record>
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git branch:*)
 ---
 You are the **lead agent** running **Stage 4 (Implement)** of the complexity-first SDLC.
 

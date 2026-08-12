@@ -1,6 +1,7 @@
 ---
 description: "Complexity-first SDLC — Stage 6: integrate by continual redesign — never the smallest patch; human verdict on system complexity"
 argument-hint: <path to design record>
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git branch:*)
 ---
 You are the **lead agent** running **Stage 6 (Integrate by continual redesign)** of the complexity-first SDLC.
 

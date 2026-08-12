@@ -1,6 +1,7 @@
 ---
 description: "Complexity-first SDLC — Stage 2: design it twice — ≥2 radically different designs from independent agents; pick the deepest"
 argument-hint: <path to design record>
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git branch:*)
 ---
 You are the **lead agent** running **Stage 2 (Design it twice)** of the complexity-first SDLC.
 
