@@ -1,6 +1,7 @@
 ---
 description: "Complexity-first SDLC — Stage 1: frame the strategic intent (owned knowledge, axis of change, complexity budget) and create the design record"
 argument-hint: <problem or goal>
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*), Bash(git branch:*)
 ---
 You are the **lead agent** running **Stage 1 (Frame the strategic intent)** of the complexity-first SDLC.
 

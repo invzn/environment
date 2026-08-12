@@ -185,6 +185,24 @@ install_claude () {
   if [ -f "$repo_claude_dir/CLAUDE.md" ]; then
     cp "$repo_claude_dir/CLAUDE.md" "$1/$claude_dir/CLAUDE.md"
   fi
+
+  # permissions — merged into settings.json rather than copied over it: the
+  # live file also holds machine-local keys (hooks, model, theme) that must
+  # survive. The repo owns the whole permissions block.
+  if [ -f "$repo_claude_dir/permissions.json" ]; then
+    if command -v jq >/dev/null 2>&1; then
+      settings_file="$1/$claude_dir/settings.json"
+      if [ ! -f "$settings_file" ]; then
+        echo "{}" > "$settings_file"
+      fi
+      settings_tmp="$(mktemp)"
+      jq -s '.[0] + {permissions: .[1].permissions}' \
+        "$settings_file" "$repo_claude_dir/permissions.json" > "$settings_tmp"
+      mv "$settings_tmp" "$settings_file"
+    else
+      echo "Warning: jq not found; skipping claude permissions merge" >&2
+    fi
+  fi
 }
 
 install_mempalace () {
