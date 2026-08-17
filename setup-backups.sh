@@ -114,8 +114,10 @@ if printf '%s' "$auth" | grep -q '"deleteFiles"'; then
   echo "ERROR: this key has the deleteFiles capability — it is NOT append-only." >&2
   die "create it with:  b2 key create --bucket $BUCKET <name> listBuckets,listFiles,readFiles,writeFiles"
 fi
-printf '%s' "$auth" | grep -Eq '"bucketName"[[:space:]]*:[[:space:]]*"'"$BUCKET"'"' \
-  || echo "WARNING: key does not appear scoped to bucket '$BUCKET' — double-check before relying on it." >&2
+# v4 moved bucket restrictions to allowed.buckets[] with a plain "name" field
+# (v1-v3 used "bucketName"); accept either so this doesn't cry wolf.
+printf '%s' "$auth" | grep -Eq '"(bucketName|name)"[[:space:]]*:[[:space:]]*"'"$BUCKET"'"' \
+  || echo "WARNING: key does not appear scoped to bucket '$BUCKET' — double-check with 'b2 key list' before relying on it." >&2
 # The account's S3-compatible endpoint (region-specific) ships in the same
 # authorize response — derive it instead of asking.
 S3URL="$(printf '%s' "$auth" | grep -o '"s3ApiUrl": *"[^"]*"' | grep -o 'https[^"]*')"
@@ -146,11 +148,17 @@ read -rsp "confirm: " RPW2; echo
 printf '%s' "$RPW" > /etc/restic/password
 chmod 600 /etc/restic/password
 
+# RESTIC_CACHE_DIR: systemd units run with no $HOME/$XDG_CACHE_HOME, and
+# restic's cache resolution dies without one ("unable to locate cache
+# directory") — found when the first timer-driven backup failed while
+# interactive runs worked.
+install -d -m 700 /var/cache/restic
 cat > /etc/restic/b2.env <<EOF
 AWS_ACCESS_KEY_ID=$KEYID
 AWS_SECRET_ACCESS_KEY=$APPKEY
 RESTIC_REPOSITORY=s3:$S3URL/$BUCKET/$REPO_PATH
 RESTIC_PASSWORD_FILE=/etc/restic/password
+RESTIC_CACHE_DIR=/var/cache/restic
 EOF
 chmod 600 /etc/restic/b2.env
 
