@@ -117,7 +117,7 @@ arch-chroot /mnt /root/chroot-setup.sh \
 rm -f /mnt/root/chroot-setup.sh
 
 # Stage the post-boot scripts in the new user's home for convenience.
-for s in post-install.sh enable-hibernate.sh setup-backups.sh; do
+for s in post-install.sh setup-secureboot.sh enable-hibernate.sh setup-backups.sh; do
   if [ -f "$HERE/$s" ]; then
     install -m0755 "$HERE/$s" "/mnt/home/$NEWUSER/$s"
     arch-chroot /mnt chown "$NEWUSER:$NEWUSER" "/home/$NEWUSER/$s"

@@ -118,49 +118,53 @@ EOF
 # --- Initramfs: systemd + sd-encrypt for LUKS unlock ----------------------
 sed -i 's/^HOOKS=.*/HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)/' \
   /etc/mkinitcpio.conf
-mkinitcpio -P
 
-# --- Bootloader: systemd-boot ---------------------------------------------
+# --- Bootloader: systemd-boot + UKIs (decision #7 rev2) --------------------
+# Unified Kernel Images instead of loader entries: kernel + initramfs +
+# cmdline in ONE .efi per (kernel, preset). systemd-boot auto-discovers them
+# from EFI/Linux/ — no entry files to keep in sync — and each is a single
+# signable artifact, which is what makes Secure Boot coverage of the
+# *initramfs* possible later (setup-secureboot.sh). Without UKIs, SB signs
+# the kernel but the initramfs — the part an evil maid would trojan to steal
+# the LUKS passphrase — rides along unverified.
 bootctl install
 LUKS_UUID="$(blkid -s UUID -o value "$LUKS_PART")"
-# Shared kernel cmdline (microcode is embedded in the initramfs via the
-# `microcode` hook, so no separate intel-ucode.img initrd line is needed).
-OPTS="rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw"
+# Shared kernel cmdline, baked into every UKI at build time (microcode is
+# embedded via the `microcode` hook, so no separate intel-ucode line).
+# Post-install cmdline changes (e.g. enable-hibernate.sh's resume=) edit this
+# file and re-run `mkinitcpio -P` — there are no entry files to patch.
+printf '%s\n' "rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw" \
+  > /etc/kernel/cmdline
+
+# Boot resilience (decision #2/#6): four UKIs from two installed kernels.
+#   arch-linux.efi              — primary `linux`
+#   arch-linux-fallback.efi     — `linux`, fallback initramfs (botched-image guard)
+#   arch-linux-lts.efi          — `linux-lts` lifeboat (known-good kernel pick)
+#   arch-linux-lts-fallback.efi — lts + fallback (belt and suspenders)
+install -d /boot/EFI/Linux
+for k in linux linux-lts; do
+  cat > "/etc/mkinitcpio.d/${k}.preset" <<EOF
+# arch-lemurpro kit: UKI layout (kernel updates rebuild these via pacman hook)
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-${k}"
+PRESETS=('default' 'fallback')
+default_uki="/boot/EFI/Linux/arch-${k}.efi"
+fallback_uki="/boot/EFI/Linux/arch-${k}-fallback.efi"
+fallback_options="-S autodetect"
+EOF
+done
+mkinitcpio -P
+for u in arch-linux arch-linux-fallback arch-linux-lts arch-linux-lts-fallback; do
+  [ -f "/boot/EFI/Linux/${u}.efi" ] || { echo "ERROR: UKI ${u}.efi was not built" >&2; exit 1; }
+done
+# pacstrap's initial kernel install built classic initramfs images before the
+# presets were switched; they're dead weight on the ESP now.
+rm -f /boot/initramfs-linux*.img
+
 cat > /boot/loader/loader.conf <<EOF
-default arch.conf
+default arch-linux.efi
 timeout 3
 console-mode max
-EOF
-# Boot resilience (decision #2/#6): four entries from two installed kernels.
-#   arch.conf            — primary `linux`, normal initramfs
-#   arch-fallback.conf   — primary `linux`, fallback initramfs (already built by
-#                          mkinitcpio -P; protects against a botched main image)
-#   arch-lts.conf        — `linux-lts` lifeboat (known-good kernel to pick when a
-#                          `linux` update won't boot — no live USB needed)
-#   arch-lts-fallback.conf — lts + fallback initramfs (belt and suspenders)
-cat > /boot/loader/entries/arch.conf <<EOF
-title   Arch Linux
-linux   /vmlinuz-linux
-initrd  /initramfs-linux.img
-options ${OPTS}
-EOF
-cat > /boot/loader/entries/arch-fallback.conf <<EOF
-title   Arch Linux (fallback initramfs)
-linux   /vmlinuz-linux
-initrd  /initramfs-linux-fallback.img
-options ${OPTS}
-EOF
-cat > /boot/loader/entries/arch-lts.conf <<EOF
-title   Arch Linux (linux-lts)
-linux   /vmlinuz-linux-lts
-initrd  /initramfs-linux-lts.img
-options ${OPTS}
-EOF
-cat > /boot/loader/entries/arch-lts-fallback.conf <<EOF
-title   Arch Linux (linux-lts, fallback initramfs)
-linux   /vmlinuz-linux-lts
-initrd  /initramfs-linux-lts-fallback.img
-options ${OPTS}
 EOF
 
 # --- sway (Wayland) desktop + audio (Phase 5) ------------------------------

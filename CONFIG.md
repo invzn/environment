@@ -13,11 +13,11 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 | Option | Choices | Selected |
 |---|---|---|
 | Boot mode | UEFI / BIOS-legacy | **UEFI** |
-| Secure Boot | on / off | ⏳ **off** (likely unsupported on Open Firmware) |
+| Secure Boot | on / off | **opt-in — `setup-secureboot.sh`** (sbctl custom keys + MS vendor certs; needs firmware Setup Mode; verified working on the Lemur Pro's firmware) |
 | Bootloader | GRUB / systemd-boot / rEFInd / EFISTUB / Limine | **systemd-boot** |
 | Boot timeout | seconds | **3s** |
 | Console mode | auto / max / keep | **max** |
-| Boot entries | — | **arch + arch-fallback + linux-lts (+ lts-fallback)** — resilience (decision #2/#6) |
+| Boot images | loader entries / UKIs | **four UKIs** in `EFI/Linux/` (each kernel × normal/fallback initramfs), auto-discovered — resilience (decision #2/#6); cmdline lives in `/etc/kernel/cmdline` (edit + `mkinitcpio -P`, re-sign if SB) |
 
 ## 2 · Disk & partitioning
 | Option | Choices | Selected |
@@ -187,8 +187,8 @@ deferrals below follow directly from this scope.
 | Thing | Status | Why |
 |---|---|---|
 | Hibernate | ⏳ deferred | zram covers daily; `enable-hibernate.sh` when wanted |
-| Secure Boot / TPM2 | ⏳ off | low threat; likely unsupported firmware |
-| Evil-maid / physical tamper | ❌ out of scope | threat model is theft + B2-breach only; FDE protects theft-at-rest, not tamper-then-return (decision #7) |
+| Secure Boot / TPM2 | ✅ opt-in | `setup-secureboot.sh`: signed UKI chain blocks bootkit persistence and unsigned-ESP boots; TPM2 LUKS enrollment a possible later layer |
+| Evil-maid / physical tamper | ⚠️ partial | signed UKIs make ESP tampering unbootable, but the SB toggle is open without a firmware supervisor password; full tamper-evidence needs TPM2-bound LUKS (PCR 7). FDE still the data-at-rest guarantee (decision #7) |
 | Encrypted DNS (DoT/DoH) | ❌ out of scope | plaintext DNS; network adversaries aren't in the threat model (decision #7) |
 | multilib | ⏳ off | not gaming on the iGPU; 2-line flip later |
 | Mirror auto-refresh | ⏳ off | seeded once is enough |

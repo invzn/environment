@@ -16,6 +16,7 @@ this kit automates.
 | `install.sh` | live ISO, as root | Seed mirrors, partition, encrypt, Btrfs, pacstrap, then call `chroot-setup.sh` |
 | `chroot-setup.sh` | inside `arch-chroot` (called by `install.sh`) | Locale, users, initramfs, bootloader, sway, zram, firewall, snapshots, time sync |
 | `post-install.sh` | first boot, as your user | AUR helper + `system76-power`/DKMS + firmware updates |
+| `setup-secureboot.sh` | later, as root (optional) | Secure Boot: sbctl keys, enroll, sign the UKI boot chain |
 | `enable-hibernate.sh` | later, as root (optional) | Adds a NOCOW Btrfs swapfile + resume plumbing for hibernate |
 | `setup-backups.sh` | later, as root | restic → B2 daily backups + staleness notifier + quarterly `restic-maintenance` |
 | `test-vm.sh` | your dev machine (macOS/Linux) | Dry-run the installer in a throwaway UEFI QEMU VM |
@@ -80,7 +81,7 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
 
 | Area | Choice |
 |------|--------|
-| Kernel | **`linux` + `linux-lts` lifeboat**, fallback-initramfs entries — bad updates are a boot-menu pick |
+| Kernel | **`linux` + `linux-lts` lifeboat**, four **UKIs** (each kernel × normal/fallback initramfs) — bad updates are a boot-menu pick |
 | Swap | **zram** (½ RAM, zstd); hibernate deferred to `enable-hibernate.sh` |
 | Snapshots | **snapper + snap-pac** — pacman pre/post on `@`, daily timeline on `@home` (`/boot` excluded — see kernel-rollback note) |
 | Backups | **restic → B2**, append-only daily key; retention = quarterly `restic-maintenance` (full-rights key kept off-device); staleness notifier + monthly `restic check --no-lock` |
@@ -90,7 +91,7 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
 | Multilib | **off** (uncomment in `pacman.conf` on demand) |
 | Time sync | **systemd-timesyncd** enabled |
 | Mirrors | **reflector** seeded once (US/HTTPS/by-rate), no timer |
-| Secure Boot | **skipped** (likely unsupported on System76 Open Firmware anyway) |
+| Secure Boot | **opt-in via `setup-secureboot.sh`** (sbctl custom keys + MS vendor certs, signed UKIs; verified working on this firmware). Requires firmware Setup Mode; supervisor password recommended |
 
 ## Route A — run the scripts on the stock Arch ISO (simplest)
 
@@ -128,10 +129,14 @@ offline installs or reusing across machines).
 - **Why System76 packages are post-boot:** they're AUR (`system76-power`,
   `system76-dkms`) — network pulls + DKMS compiles — so they don't belong in the ISO or
   the chroot. `post-install.sh` handles them on the real system.
-- **`/boot` is unencrypted** (FAT32 ESP holding the kernel/initramfs). Standard laptop
-  tradeoff. The `sd-encrypt` initramfs leaves room to add TPM2 auto-unlock later:
-  `systemd-cryptenroll --tpm2-device=auto /dev/nvme0n1p2`. Secure Boot was deliberately
-  skipped (decision #7) — likely unsupported on System76 Open Firmware regardless.
+- **`/boot` is unencrypted** (FAT32 ESP holding the UKIs). Standard laptop tradeoff —
+  and the reason the kit boots **UKIs**: with `setup-secureboot.sh`, the kernel,
+  initramfs, and cmdline are one signed artifact, so ESP tampering (the evil-maid
+  initramfs swap) fails signature validation instead of silently booting. Without
+  Secure Boot enabled, UKIs cost nothing and simplify the ESP. The `sd-encrypt`
+  initramfs leaves room to add TPM2 auto-unlock later:
+  `systemd-cryptenroll --tpm2-device=auto /dev/nvme0n1p2` (best after Secure Boot,
+  so PCR 7 measurements are meaningful).
 - **Snapshots are not backups:** snapper protects against bad updates and fat-fingered
   deletes, but the snapshots live on the same LUKS volume — not safe against disk death
   or theft. Add real off-device backups separately.
@@ -145,7 +150,7 @@ offline installs or reusing across machines).
   (decision #9). So snap-pac protects *userspace* updates fully; *kernel* rollbacks
   need this extra step.
 - **Boot resilience without GRUB:** two kernels (`linux` + `linux-lts`) and a
-  fallback-initramfs entry for each mean a bad `linux`/initramfs update is a
+  fallback-initramfs UKI for each mean a bad `linux`/initramfs update is a
   boot-menu arrow-key away from recovery, not a live-USB rescue (decision #6).
   Only a *disk/FS-level* catastrophe (can't mount `@`) still needs a live USB —
   unavoidable with any bootloader. Accepted tradeoff for a clean boot stack

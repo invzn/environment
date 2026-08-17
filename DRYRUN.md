@@ -37,7 +37,7 @@ ping -c2 archlinux.org     # proves internet/DNS works
 stages the last three into the new user's home, matching a real install):
 ```bash
 mkdir -p kit && cd kit
-for f in install.sh chroot-setup.sh post-install.sh enable-hibernate.sh setup-backups.sh; do
+for f in install.sh chroot-setup.sh post-install.sh setup-secureboot.sh enable-hibernate.sh setup-backups.sh; do
   curl -fLO http://10.0.2.2:8000/$f
 done
 chmod +x *.sh

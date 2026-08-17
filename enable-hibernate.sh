@@ -9,9 +9,9 @@
 #   * creates a dedicated, snapshot-excluded @swap subvolume mounted at /swap
 #   * creates a NOCOW Btrfs swapfile >= RAM (so the hibernate image always fits)
 #   * computes the physical resume offset
-#   * adds resume=/resume_offset= to ALL systemd-boot entries + an fstab line
-#     (all four entries share the same options line, and hibernating from a
-#     session booted on the LTS/fallback entries must resume too)
+#   * adds resume=/resume_offset= to /etc/kernel/cmdline and rebuilds the UKIs
+#     (one cmdline baked into all four, so a session booted on the LTS or
+#     fallback UKI resumes too), re-signing them if Secure Boot/sbctl is set up
 #
 # The swapfile lives INSIDE your LUKS volume, so the hibernate image is
 # encrypted at rest and resume happens cleanly after the boot-time unlock.
@@ -24,12 +24,12 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 [ "$(id -u)" -eq 0 ] || die "run as root (sudo)"
 
 ROOT_DEV="/dev/mapper/cryptroot"
-ENTRY="/boot/loader/entries/arch.conf"
+CMDLINE="/etc/kernel/cmdline"
 SWAP_MNT="/swap"
 SWAPFILE="$SWAP_MNT/swapfile"
 
 [ -b "$ROOT_DEV" ] || die "$ROOT_DEV not found — is this the Lemur Pro install?"
-[ -f "$ENTRY" ]    || die "$ENTRY not found — expected systemd-boot entry"
+[ -f "$CMDLINE" ]  || die "$CMDLINE not found — this script expects the kit's UKI layout"
 
 # Size = RAM rounded up to whole GiB (image can't exceed RAM, so >= RAM is safe).
 ram_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
@@ -70,20 +70,31 @@ offset="$(btrfs inspect-internal map-swapfile -r "$SWAPFILE")"
 [ -n "$offset" ] || die "could not determine resume_offset"
 echo ">> resume_offset = $offset"
 
-# Patch every entry, not just the default: an image written while booted on
-# the LTS or fallback entry would otherwise never resume (and picking an
-# unpatched entry after hibernating silently discards the session).
-for entry in /boot/loader/entries/*.conf; do
-  if grep -q 'resume=' "$entry"; then
-    echo ">> resume= already present in $entry — leaving as-is"
-  else
-    sed -i "/^options / s|\$| resume=${ROOT_DEV} resume_offset=${offset}|" "$entry"
-    echo ">> patched $entry"
-  fi
-done
+# One cmdline is baked into all four UKIs at build time, so patching this one
+# file covers the LTS and fallback boots too (a session hibernated on any of
+# them must resume on any of them).
+if grep -q 'resume=' "$CMDLINE"; then
+  echo ">> resume= already present in $CMDLINE — leaving as-is"
+else
+  sed -i "1s|\$| resume=${ROOT_DEV} resume_offset=${offset}|" "$CMDLINE"
+  echo ">> patched $CMDLINE"
+fi
 
-# systemd-based initramfs handles resume from the cmdline; rebuild to be safe.
+# Rebuild the UKIs so the new cmdline is actually in the boot images.
 mkinitcpio -P
+
+# A manual mkinitcpio run bypasses sbctl's pacman hook — freshly built UKIs
+# are UNSIGNED. If Secure Boot is set up, booting an unsigned UKI fails, so
+# re-sign before the next reboot.
+if command -v sbctl >/dev/null 2>&1 && [ -d /var/lib/sbctl/keys -o -d /usr/share/secureboot/keys ]; then
+  echo ">> Re-signing rebuilt UKIs (Secure Boot)"
+  for u in /boot/EFI/Linux/*.efi; do sbctl sign -s "$u"; done
+  # Raw /boot/vmlinuz-* staying unsigned is correct (UKI ingredients, never
+  # booted directly); anything else unsigned means don't reboot yet.
+  if sbctl verify 2>&1 | grep -Ei 'is not signed' | grep -qv 'vmlinuz'; then
+    die "unsigned boot-chain files remain after re-signing — fix before rebooting"
+  fi
+fi
 
 echo
 echo "Hibernation enabled. Test with:  systemctl hibernate"
