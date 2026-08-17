@@ -17,7 +17,9 @@ echo ">> Toolchain + kernel headers + fwupd"
 # on every kernel upgrade. Without them the build fails SILENTLY and the EC fan/
 # charge driver never loads. Both kernels get headers so the linux-lts lifeboat
 # (decision #6) isn't thermally blind.
-sudo pacman -S --needed --noconfirm base-devel git fwupd linux-headers linux-lts-headers
+# -Syu, not -S: installing against a stale db (anything but minutes after
+# pacstrap) risks version mismatches and 404s from rotated mirror files.
+sudo pacman -Syu --needed --noconfirm base-devel git fwupd linux-headers linux-lts-headers
 
 # --- paru (AUR helper) -----------------------------------------------------
 if ! command -v paru >/dev/null; then
@@ -38,7 +40,9 @@ echo ">>   (verify whether system76-dkms/system76-acpi-dkms apply to this model)
 
 echo ">> System76 power management + DKMS drivers"
 paru -S --needed --noconfirm system76-power system76-dkms system76-acpi-dkms
-sudo systemctl enable --now system76-power
+# The unit is named after the D-Bus daemon, not the package —
+# there is no "system76-power.service".
+sudo systemctl enable --now com.system76.PowerDaemon.service
 
 # Assert the DKMS modules actually BUILT — a missing-headers failure is silent
 # (decision #11). dkms status should list each module as 'installed'.
