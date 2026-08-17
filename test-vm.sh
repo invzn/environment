@@ -36,7 +36,7 @@ Usage: $0 [--iso PATH] [--fresh] [--boot-disk] [--disk-size N]
                   official Arch ISO.
   --fresh         Recreate the throwaway disk + UEFI vars from scratch.
   --boot-disk     Boot the installed disk instead of the ISO — use this AFTER
-                  a successful install to verify the LUKS unlock + i3 come up.
+                  a successful install to verify the LUKS unlock + sway come up.
   --disk-size N   Disk image size (default $DISK_SIZE).
 
 Env overrides: RAM (MB), CPUS, DISK_IMG, ISO
@@ -124,7 +124,9 @@ ARGS=(
   -cpu "$CPUFLAG"
   -smp "$CPUS"
   -m "$RAM"
-  -vga std
+  # virtio-gpu, not std VGA: sway/wlroots needs a proper KMS driver; bochs-drm
+  # (std) is flaky under wlroots, virtio-gpu is the supported path.
+  -vga virtio
   -display "$DISPLAY_OPT"
   -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE"
   -drive if=pflash,format=raw,file="$VARS_IMG"
@@ -157,11 +159,12 @@ if [ "$MODE" = install ]; then
    * Custom ISO (archiso): scripts are already at /root — run ./install.sh
    * Official Arch ISO:    fetch the scripts first, then run ./install.sh
  When it finishes: power off the guest, then re-run with --boot-disk to verify
- the LUKS passphrase prompt, systemd-boot, and i3 actually come up.
+ the LUKS passphrase prompt, systemd-boot, and sway actually come up.
 EOF
 else
   echo " Booting the installed disk — you should get the LUKS passphrase prompt,"
-  echo " then a TTY login. Log in and 'startx' to confirm i3 works."
+  echo " then a TTY login. Log in and run 'WLR_RENDERER_ALLOW_SOFTWARE=1 sway'"
+  echo " to confirm sway works (the env var is VM-only: no GPU in the guest)."
 fi
 echo "=================================================================="
 echo

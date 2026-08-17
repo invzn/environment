@@ -67,7 +67,10 @@ poweroff
 Expected sequence in the guest:
 1. **LUKS passphrase prompt** (your disk passphrase) →
 2. **TTY login** (`lemur login:`) → log in as `chris` →
-3. `startx` → **i3 appears** (`Mod+Enter` = terminal, `Mod+d` = launcher).
+3. `WLR_RENDERER_ALLOW_SOFTWARE=1 sway` → **sway appears** (`Mod+Enter` = terminal,
+   `Mod+d` = launcher). The env var is VM-only: the guest has no GPU, so wlroots
+   needs permission to fall back to llvmpipe software rendering. On the real
+   laptop you just type `sway`.
 
 If all three happen, the installer is verified end-to-end. Then `Ctrl+C` the Python
 server in Terminal A.

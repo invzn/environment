@@ -100,18 +100,20 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 | Session mgr | wireplumber / media-session | **wireplumber** |
 | PulseAudio compat | — | **pipewire-pulse** |
 | GPU userspace | — | **mesa + vulkan-intel** |
-| Xorg driver | modesetting / xf86-video-intel | **modesetting** |
-| Display server | Xorg / Wayland | **Xorg** (for i3) |
+| Display server | Xorg / Wayland | **Wayland** (sway/wlroots; KMS + mesa, no Xorg driver needed) |
+| X11 app compat | — | **xorg-xwayland** |
 
 ## 11 · Desktop
 | Option | Choices | Selected |
 |---|---|---|
-| WM/DE | — | **i3 (i3-wm)** |
-| Status bar | — | **i3status** |
-| Screen lock | — | **i3lock** |
-| Launcher | — | **dmenu + rofi** |
-| Terminal | — | **ghostty** (`$TERMINAL` set in `.xinitrc` so `i3-sensible-terminal` finds it) |
-| Display manager | none / ly / lightdm / sddm / gdm | **none — `startx`** (`exec i3`) |
+| WM/DE | — | **sway** (i3-compatible config; swaybg/swayidle installed) |
+| Status bar | — | **swaybar + i3status** (swaybar consumes the i3status protocol) |
+| Screen lock | — | **swaylock** |
+| Launcher | — | **wmenu + rofi** (sway's default `$menu` is `wmenu-run`) |
+| Terminal | — | **ghostty** (staged `~/.config/sway/config` sets `$term ghostty`) |
+| Display manager | none / ly / lightdm / sddm / gdm | **none — type `sway`** at the TTY |
+| Notifications | — | **mako + libnotify** (smartd/restic notifiers depend on `notify-send`) |
+| Screen share | — | **xdg-desktop-portal-wlr** |
 | Fonts | — | **ttf-dejavu, ttf-font-awesome** |
 | Browser | — | **firefox** |
 

@@ -57,4 +57,4 @@ fwupdmgr get-updates || true
 
 echo
 echo "Done. Reboot recommended so the System76 DKMS modules load cleanly."
-echo "Tip: 'system76-power charge-thresholds' and bind brightnessctl to i3 keys."
+echo "Tip: 'system76-power charge-thresholds' and bind brightnessctl to sway keys."

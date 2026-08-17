@@ -313,7 +313,7 @@ EOF
 # A root timer that fails silently is Schroedinger's backup, and a root job
 # can't reach your session D-Bus to notify-send anyway. So instead of pushing
 # FROM the backup, we check freshness when YOU log in: a `systemctl --user` unit
-# (runs IN your i3 session) reads the stamps and warns if the last success is
+# (runs IN your sway session) reads the stamps and warns if the last success is
 # stale, the last run failed, or maintenance is overdue. Catches "run failed",
 # "never ran", and "retention never happens".
 cat > /usr/local/bin/restic-staleness-check <<'EOF'

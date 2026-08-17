@@ -1,7 +1,7 @@
 # Arch Linux installer kit — System76 Lemur Pro
 
 Automated, reproducible Arch install for a Lemur Pro: **LUKS2 full-disk encryption +
-Btrfs + systemd-boot + i3 (X11)**, plus System76 power/DKMS tooling. See
+Btrfs + systemd-boot + sway (Wayland)**, plus System76 power/DKMS tooling. See
 [`../arch-system76-install.md`](../arch-system76-install.md) for the manual walkthrough
 this kit automates.
 
@@ -14,7 +14,7 @@ this kit automates.
 | File | Runs | Purpose |
 |------|------|---------|
 | `install.sh` | live ISO, as root | Seed mirrors, partition, encrypt, Btrfs, pacstrap, then call `chroot-setup.sh` |
-| `chroot-setup.sh` | inside `arch-chroot` (called by `install.sh`) | Locale, users, initramfs, bootloader, i3, zram, firewall, snapshots, time sync |
+| `chroot-setup.sh` | inside `arch-chroot` (called by `install.sh`) | Locale, users, initramfs, bootloader, sway, zram, firewall, snapshots, time sync |
 | `post-install.sh` | first boot, as your user | AUR helper + `system76-power`/DKMS + firmware updates |
 | `enable-hibernate.sh` | later, as root (optional) | Adds a NOCOW Btrfs swapfile + resume plumbing for hibernate |
 | `setup-backups.sh` | later, as root | restic → B2 daily backups + staleness notifier + quarterly `restic-maintenance` |
@@ -34,7 +34,8 @@ defaults), with NAT networking so `pacstrap` reaches the mirrors.
 ./test-vm.sh --iso /path/to/archlinux.iso
 #    inside the guest: run ./install.sh  (disk is /dev/nvme0n1, no override needed)
 # 3. after it finishes, power off and verify the REAL boot path:
-./test-vm.sh --boot-disk        # expect: LUKS prompt → TTY login → startx → i3
+./test-vm.sh --boot-disk        # expect: LUKS prompt → TTY login → sway
+#    (no GPU in the VM: launch with  WLR_RENDERER_ALLOW_SOFTWARE=1 sway)
 ```
 
 Throwaway artifacts (disk image, UEFI vars) live in `./.vm/`; `--fresh` recreates
@@ -60,7 +61,7 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
       missing-headers failure means no EC fan/charge control.
 - [ ] **WiFi associates** — `nmtui` / `nmcli device wifi connect …` (VM used wired).
 - [ ] **Backlight** — `brightnessctl set 50%` actually changes panel brightness.
-- [ ] **Graphics** — `startx` → i3 on the real i915 (resolution, no tearing);
+- [ ] **Graphics** — `sway` on the real i915 (resolution, no tearing);
       external display via the USB-C/HDMI port if you use one.
 - [ ] **Suspend/resume** — `systemctl suspend`, lid close/open.
 - [ ] **Hibernate** (only after `enable-hibernate.sh`) — `systemctl hibernate`

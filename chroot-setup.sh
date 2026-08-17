@@ -163,13 +163,20 @@ initrd  /initramfs-linux-lts-fallback.img
 options ${OPTS}
 EOF
 
-# --- i3 (X11) desktop + audio (Phase 5) -----------------------------------
+# --- sway (Wayland) desktop + audio (Phase 5) ------------------------------
+# polkit: sway acquires the seat via systemd-logind, which needs polkit.
+# xorg-xwayland: X11-only apps keep working inside sway.
+# mako + libnotify: the smartd and restic staleness notifiers call notify-send —
+#   without a daemon + libnotify those alerts silently vanish.
+# xdg-desktop-portal-wlr: screen share/capture for wlroots compositors.
 pacman -S --noconfirm --needed \
-  xorg-server xorg-xinit \
-  i3-wm i3status i3lock dmenu rofi \
+  sway swaybg swaylock swayidle xorg-xwayland polkit \
+  i3status wmenu rofi \
   ghostty ttf-dejavu ttf-font-awesome \
   network-manager-applet pavucontrol pipewire pipewire-pulse wireplumber \
-  brightnessctl playerctl firefox
+  brightnessctl playerctl firefox \
+  wl-clipboard mako libnotify \
+  xdg-desktop-portal xdg-desktop-portal-wlr
 
 # --- User + sudo -----------------------------------------------------------
 useradd -mG wheel -s /bin/bash "$USERNAME"
@@ -178,10 +185,17 @@ sed -i 's/^# %wheel ALL=(ALL:ALL) ALL$/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 # no sudo makes post-install.sh dead on arrival. Fail loudly instead.
 grep -q '^%wheel ALL=(ALL:ALL) ALL$' /etc/sudoers || { echo "ERROR: failed to enable %wheel in /etc/sudoers" >&2; exit 1; }
 
-# TERMINAL steers i3-sensible-terminal (Mod+Enter) to ghostty regardless of
-# whether i3's fallback list knows it.
-printf 'export TERMINAL=ghostty\nexec i3\n' > "/home/$USERNAME/.xinitrc"
-chown "$USERNAME:$USERNAME" "/home/$USERNAME/.xinitrc"
+# sway starts by typing `sway` at the TTY login — no display manager, same
+# philosophy as the old startx flow. Stage a user config from the packaged
+# default and point $term at ghostty (upstream default is foot, not installed).
+install -d -m 755 "/home/$USERNAME/.config/sway"
+cp /etc/sway/config "/home/$USERNAME/.config/sway/config"
+sed -i 's/^set \$term .*/set $term ghostty/' "/home/$USERNAME/.config/sway/config"
+# Assert the sed landed — if upstream renames $term the config would silently
+# keep pointing Mod+Enter at a terminal that isn't installed.
+grep -q '^set \$term ghostty$' "/home/$USERNAME/.config/sway/config" \
+  || { echo "ERROR: failed to point sway's \$term at ghostty in /home/$USERNAME/.config/sway/config" >&2; exit 1; }
+chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.config"
 
 # --- Swap: zram (decision #1) ---------------------------------------------
 # zram = ½ RAM (12G on this 24G machine, a ceiling not a reservation), zstd.
