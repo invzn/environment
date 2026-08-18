@@ -69,6 +69,9 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
       then resume cleanly.
 - [ ] **Power/charge** — `system76-power charge-thresholds`, fan behaviour sane.
 - [ ] **Firmware** — `fwupdmgr get-updates`.
+- [ ] **Secure Boot** (optional, after `setup-secureboot.sh` + firmware toggle) —
+      `bootctl status` says `Secure Boot: enabled (user)`; then confirm a
+      `pacman -Syu` that touches the kernel leaves `sbctl verify` green.
 - [ ] **Backups** — `systemctl --user enable --now restic-staleness-check.timer`,
       run the first `restic-backup`, confirm a snapshot lands in B2 (a final
       lock-cleanup error is expected with the append-only key — success is the
@@ -96,7 +99,7 @@ likely to break (decision #12). Run these **on the laptop** after first boot +
 ## Route A — run the scripts on the stock Arch ISO (simplest)
 
 1. Boot the official Arch ISO, get online (`iwctl` / `nmcli`).
-2. Fetch this `arch-lemurpro/` directory (git clone, `curl`, or USB) so the three
+2. Fetch this `arch-lemurpro/` directory (git clone, `curl`, or USB) so the
    scripts sit together.
 3. **Review and edit the CONFIG block** at the top of `install.sh` — at minimum
    `DISK`, `NEWHOST`, `NEWUSER`, `TIMEZONE`. Or override via env:
@@ -142,10 +145,11 @@ offline installs or reusing across machines).
   or theft. Add real off-device backups separately.
 - **Kernel rollback is partial — `/boot` is not in the snapshots.** The ESP is
   FAT32, not a Btrfs subvolume, so a `snapper rollback` restores `/usr/lib/modules`
-  (on `@`) but **not** the kernel image/initramfs on `/boot`. After rolling back a
-  transaction that bumped the kernel, the running `vmlinuz` and the restored modules
-  mismatch. Fix: reinstall the matching kernel version (`pacman -S linux` at the
-  restored version, which rewrites the ESP), **or** boot the `linux-lts` entry —
+  (on `@`) but **not** the UKIs on `/boot`. After rolling back a transaction that
+  bumped the kernel, the running kernel and the restored modules mismatch. Fix:
+  reinstall the matching kernel version (`pacman -S linux` at the restored
+  version — the pacman hooks rebuild and re-sign the UKIs), **or** boot the
+  `linux-lts` entry —
   an independent, self-consistent kernel — to get a shell and repair from there
   (decision #9). So snap-pac protects *userspace* updates fully; *kernel* rollbacks
   need this extra step.

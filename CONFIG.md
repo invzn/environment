@@ -164,7 +164,7 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 ## 16 · Maintenance & verification
 | Option | Choices | Selected |
 |---|---|---|
-| Boot stub updates | manual / auto | **`systemd-boot-update.service`** — keeps the ESP stub current (decision #10) |
+| Boot stub updates | manual / auto | **`systemd-boot-update.service`** — keeps the ESP stub current (decision #10). With Secure Boot, `setup-secureboot.sh` signs the **source** binary in `/usr/lib` so these auto-redeploys stay signed |
 | TRIM | continuous / weekly / off | **weekly `fstrim.timer`** (decision #1) |
 | Btrfs scrub | none / scheduled | **monthly `btrfs-scrub@-.timer`** — surfaces bit-rot (decision #10) |
 | Backup integrity | none / scheduled | **monthly `restic check`** (decision #10) |
@@ -179,9 +179,11 @@ password covers the breach (decision #7/#8). Ransomware on the laptop is
 covered by the append-only daily B2 key (can't delete history). A stolen B2
 *account* login could still destroy history — mitigated by credential hygiene
 (unique password + 2FA, stored off-device), not Object Lock, whose per-object
-retention would expire while restic packs stay live. **Out of scope:** targeted
-physical tamper (evil-maid), network adversaries, nation-state. Several
-deferrals below follow directly from this scope.
+retention would expire while restic packs stay live. **Partially in scope once
+Secure Boot is enabled** (`setup-secureboot.sh`): ESP tampering (evil-maid
+initramfs swap) fails signature validation — though the SB toggle stays open
+without a firmware supervisor password. **Out of scope:** network adversaries,
+nation-state. Several deferrals below follow directly from this scope.
 
 ## Consciously not configured
 | Thing | Status | Why |

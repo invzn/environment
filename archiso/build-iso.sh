@@ -35,6 +35,7 @@ install -d -m0750 "$WORK/airootfs/root"
 install -m0755 "$KIT/install.sh"         "$WORK/airootfs/root/install.sh"
 install -m0755 "$KIT/chroot-setup.sh"    "$WORK/airootfs/root/chroot-setup.sh"
 install -m0755 "$KIT/post-install.sh"    "$WORK/airootfs/root/post-install.sh"
+install -m0755 "$KIT/setup-secureboot.sh" "$WORK/airootfs/root/setup-secureboot.sh"
 install -m0755 "$KIT/enable-hibernate.sh" "$WORK/airootfs/root/enable-hibernate.sh"
 install -m0755 "$KIT/setup-backups.sh"    "$WORK/airootfs/root/setup-backups.sh"
 

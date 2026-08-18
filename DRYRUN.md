@@ -33,8 +33,8 @@ ping -c2 archlinux.org     # proves internet/DNS works
 > If `archlinux.org` fails but `10.0.2.2` works:
 > `systemctl restart systemd-networkd systemd-resolved` and retry.
 
-**3. Pull the scripts from your Mac** (all five, same directory — install.sh
-stages the last three into the new user's home, matching a real install):
+**3. Pull the scripts from your Mac** (all six, same directory — install.sh
+stages the last four into the new user's home, matching a real install):
 ```bash
 mkdir -p kit && cd kit
 for f in install.sh chroot-setup.sh post-install.sh setup-secureboot.sh enable-hibernate.sh setup-backups.sh; do
