@@ -2,7 +2,7 @@
 
 Automated, reproducible Arch install for a Lemur Pro: **LUKS2 full-disk encryption +
 Btrfs + systemd-boot + sway (Wayland)**, plus System76 power/DKMS tooling. See
-[`../arch-system76-install.md`](../arch-system76-install.md) for the manual walkthrough
+[`arch-system76-install.md`](arch-system76-install.md) for the manual walkthrough
 this kit automates.
 
 > ⚠️ **`install.sh` erases the target disk.** It guards on UEFI + a typed-disk
