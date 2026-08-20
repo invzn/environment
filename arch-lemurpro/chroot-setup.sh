@@ -173,13 +173,15 @@ EOF
 # mako + libnotify: the smartd and restic staleness notifiers call notify-send —
 #   without a daemon + libnotify those alerts silently vanish.
 # xdg-desktop-portal-wlr: screen share/capture for wlroots compositors.
+# udisks2: `udisksctl mount` lets the seated user mount USB sticks without
+#   sudo (via polkit) — no automount daemon, mounts land in /run/media/$USER.
 pacman -S --noconfirm --needed \
   sway swaybg swaylock swayidle xorg-xwayland polkit \
   i3status wmenu rofi \
   ghostty ttf-dejavu ttf-font-awesome \
   network-manager-applet pavucontrol pipewire pipewire-pulse wireplumber \
   brightnessctl playerctl firefox \
-  wl-clipboard mako libnotify \
+  wl-clipboard mako libnotify udisks2 \
   xdg-desktop-portal xdg-desktop-portal-wlr
 
 # --- User + sudo -----------------------------------------------------------

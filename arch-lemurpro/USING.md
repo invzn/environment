@@ -54,6 +54,21 @@ Known networks auto-reconnect. Firewall is nftables, default-drop inbound —
 nothing listens; if you ever open a port temporarily, prefer a transient
 `nft insert rule …` over editing `/etc/nftables.conf`.
 
+## USB drives
+
+udisks2 handles removable media — no sudo needed (polkit grants it to the
+seated user), no automount daemon.
+
+```bash
+lsblk -f                          # find the stick (e.g. sda1) after plugging in
+udisksctl mount -b /dev/sda1      # mounts at /run/media/$USER/<label>
+udisksctl unmount -b /dev/sda1    # always unmount before pulling the stick
+```
+
+FAT32/exFAT work out of the box; NTFS mounts read/write via the kernel
+`ntfs3` driver. Formatting or fsck of exFAT/NTFS needs `exfatprogs`/`ntfs-3g`
+(not installed).
+
 ## Updating
 
 ```bash

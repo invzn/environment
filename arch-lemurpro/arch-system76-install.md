@@ -197,7 +197,7 @@ sudo pacman -S sway swaybg swaylock swayidle xorg-xwayland polkit \
   ttf-dejavu ttf-font-awesome \
   network-manager-applet pavucontrol pipewire pipewire-pulse wireplumber \
   brightnessctl playerctl \
-  wl-clipboard mako libnotify \
+  wl-clipboard mako libnotify udisks2 \
   xdg-desktop-portal xdg-desktop-portal-wlr \
   firefox
 
