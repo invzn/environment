@@ -114,6 +114,7 @@ this kit. **Legend:** **bold** = selected · *default* = Arch default not overri
 | Display manager | none / ly / lightdm / sddm / gdm | **none — type `sway`** at the TTY |
 | Notifications | — | **mako + libnotify** (smartd/restic notifiers depend on `notify-send`) |
 | Screen share | — | **xdg-desktop-portal-wlr** |
+| Removable media | none / udisks2 / udiskie | **udisks2** (`udisksctl mount` as seated user, no automount daemon) |
 | Fonts | — | **ttf-dejavu, ttf-font-awesome** |
 | Browser | — | **firefox** |
 
