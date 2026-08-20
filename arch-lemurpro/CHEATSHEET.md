@@ -1,4 +1,4 @@
-# Using this machine — daily operations guide
+# Cheatsheet — daily operations
 
 Owner's manual for the installed system (`blitzen`-style setup: LUKS2 + Btrfs +
 UKIs + Secure Boot + sway). Companion to `README.md` (installing) and
