@@ -11,7 +11,7 @@ The setup is built around four cross-cutting ideas: **vertical-slice TDD**, **mu
 | `CLAUDE.md` | Global instructions applied to every project (safety + interaction style) |
 | `agents/` | 13 subagent definitions (experts, reviewers, recon) |
 | `commands/` | 19 slash commands across four families |
-| `skills/` | 5 skills (TDD, grilling, architecture, KB) |
+| `skills/` | 6 skills (TDD, grilling, architecture, KB, personal writing voice) |
 | `references/` | Style guides agents read at runtime |
 | `TODO.md` | Drafts/open questions; **not** loaded into context, **not** installed |
 
@@ -72,6 +72,7 @@ Models are tiered: `repo-expert` runs on **haiku** (fast/cheap recon); all other
 - `grill-with-docs` — grilling that also challenges a plan against the project's domain model and updates `CONTEXT.md` / ADRs inline
 - `improve-codebase-architecture` — find deepening/refactoring opportunities, informed by the KB glossary and ADRs
 - `llm-kb` — build and maintain the persistent, interlinked-markdown knowledge base
+- `write-like-chris` — draft and rewrite technical prose in Chris's voice using a corpus-derived profile and sanitized examples
 
 ## References
 
